@@ -20,6 +20,15 @@
 <body>
   <div class="container">
     <div class="game-card">
+      <!-- Dil seçici -->
+      <div class="lang-selector">
+        <div id="current-lang" class="lang-btn">🇬🇧 EN</div>
+        <div id="lang-dropdown" class="lang-dropdown hidden">
+          <div class="lang-option" data-lang="en">🇬🇧 English</div>
+          <div class="lang-option" data-lang="tr">🇹🇷 Türkçe</div>
+        </div>
+      </div>
+
       <h1>Tap To Earn</h1>
 
       <!-- Kullanıcı info -->
@@ -38,7 +47,7 @@
       <div class="upgrade-section">
         <h2>Upgrade</h2>
         <button id="upgrade-tap-power-btn">
-          Increase Tap Power (cost: 50 coins)
+          Increase Tap Power (cost: 100 coins)
         </button>
       </div>
 
@@ -58,7 +67,7 @@
           <div>
             <h2 class="tasks-title">Daily Tasks</h2>
             <p class="tasks-subtitle">
-              Complete tasks to earn extra coins and discover new apps.
+              Complete tasks to earn extra coins.
             </p>
           </div>
           <div class="tasks-badge">🔥 Hot</div>

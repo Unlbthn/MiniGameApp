@@ -24,9 +24,10 @@ body {
 /* Ana kart */
 
 .game-card {
+  position: relative;
   background: rgba(15, 23, 42, 0.98);
   border-radius: 24px;
-  padding: 20px 18px 18px 18px;
+  padding: 24px 18px 18px 18px;
   box-shadow: 0 20px 45px rgba(15, 23, 42, 0.9);
   border: 1px solid rgba(148, 163, 184, 0.25);
 }
@@ -36,12 +37,55 @@ h1 {
   font-size: 24px;
   font-weight: 700;
   color: #e5f2ff;
+  text-align: center;
+}
+
+/* Dil seçici */
+
+.lang-selector {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 20;
+}
+
+.lang-btn {
+  background: rgba(30, 41, 59, 0.85);
+  padding: 6px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.lang-dropdown {
+  margin-top: 5px;
+  background: rgba(15, 23, 42, 0.98);
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  padding: 6px 0;
+}
+
+.lang-option {
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.lang-option:hover {
+  background: rgba(51, 65, 85, 0.5);
+}
+
+.hidden {
+  display: none;
 }
 
 /* Kullanıcı info */
 
 #user-info {
   margin-bottom: 14px;
+  text-align: center;
 }
 
 #user-info p {

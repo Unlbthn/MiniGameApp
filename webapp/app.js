@@ -1,14 +1,29 @@
 // Telegram WebApp objesi (varsa)
 const tg = window.Telegram ? window.Telegram.WebApp : null;
 
-// Telegram içindeysek ekranı büyüt
-if (tg) {
-  try {
-    tg.expand();
-  } catch (e) {
-    console.log("Telegram WebApp expand error:", e);
-  }
-}
+// Dil metinleri
+const LANG = {
+  en: {
+    tap: "TAP",
+    upgrade_title: "Upgrade",
+    upgrade_btn_prefix: "Increase Tap Power (cost: ",
+    wallet_title: "TON Wallet",
+    buy_ton: "Buy coins with TON (beta)",
+    daily_tasks: "Daily Tasks",
+    daily_sub: "Complete tasks to earn extra coins.",
+  },
+  tr: {
+    tap: "TIKLA",
+    upgrade_title: "Yükselt",
+    upgrade_btn_prefix: "Vuruş Gücünü Artır (maliyet: ",
+    wallet_title: "TON Cüzdan",
+    buy_ton: "TON ile coin satın al (beta)",
+    daily_tasks: "Günlük Görevler",
+    daily_sub: "Ek coin kazanmak için görevleri tamamla.",
+  },
+};
+
+let currentLang = localStorage.getItem("tap_lang") || "en";
 
 let userId = null;
 let userState = null;
@@ -24,15 +39,14 @@ const API_BASE = window.location.origin;
 let tapCounter = 0;
 const TAPS_PER_AD = 50; // 50 tap'te bir reklam dene
 
-// Minimum süre kontrolü (aynı anda hem tap hem süreye bakabiliriz)
+// Minimum süre kontrolü
 let lastAdTime = 0;
 const AD_INTERVAL_MS = 60_000; // 1 dakika
 
 // AdsGram controller
 let AdController = null;
 
-// blockId → AdsGram panelinden aldığın ID
-// Moderasyon mesajında PlatformID: 16514 dedin, burada onu kullanıyoruz.
+// AdsGram blockId / PlatformID
 const ADSGRAM_BLOCK_ID = "16514";
 
 function initAdsgram() {
@@ -49,14 +63,10 @@ function initAdsgram() {
 }
 
 // Interstitial reklam (otomatik, ödülsüz)
-// Kullanıcı AdController.show() ile reklamı izler veya kapatır.
-// Biz sadece görüntüleme başına CPM kazanırız.
 function maybeShowInterstitial() {
   if (!AdController) return;
 
   const now = Date.now();
-
-  // Çok sık reklam göstermemek için zaman kontrolü
   if (now - lastAdTime < AD_INTERVAL_MS) {
     return;
   }
@@ -66,15 +76,13 @@ function maybeShowInterstitial() {
   AdController.show()
     .then((result) => {
       console.log("Interstitial gösterildi:", result);
-      // Interstitial'de ödül zorunlu değil, sadece gösterimden kazanıyoruz.
     })
     .catch((err) => {
       console.error("Interstitial gösterilemedi:", err);
     });
 }
 
-// Rewarded reklam (kullanıcı video/ads bitirince ödül)
-// Örnek: +500 coin
+// Rewarded reklam
 function showRewardAd() {
   if (!AdController) {
     alert("Reklam şu anda hazır değil.");
@@ -85,11 +93,9 @@ function showRewardAd() {
     .then((result) => {
       console.log("Reward ad sonucu:", result);
 
-      // done = true ve error = false ise kullanıcı sonuna kadar izlemiş demektir
       if (result && result.done && !result.error) {
         giveRewardCoins();
       } else {
-        // Kullanıcı erken kapattı veya error oluştu
         alert("Ödül kazanmak için reklamı sonuna kadar izlemen gerekiyor.");
       }
     })
@@ -99,8 +105,7 @@ function showRewardAd() {
     });
 }
 
-// Şimdilik ödülü sadece local state üzerinde veriyoruz.
-// İleride backend'de /api/reward endpoint'i ile kalıcı hâle getirebilirsin.
+// Şimdilik ödülü local state üzerinde veriyoruz
 function giveRewardCoins() {
   if (!userState) return;
   const rewardAmount = 500;
@@ -114,24 +119,14 @@ function giveRewardCoins() {
   alert(`+${rewardAmount} coin kazandın! 🎉`);
 }
 
-// AdsGram Task format (örnek hook)
-// NOT: Task formatı için init gerekmediğini AdsGram dokümanında söylüyor.
-// Buradaki fonksiyonun içine, AdsGram Task entegrasyon dokümanındaki kodu eklemelisin.
+// AdsGram Task format hook
 function showAdsgramTask() {
   if (!window.Adsgram) {
     alert("AdsGram not available right now.");
     return;
   }
 
-  // Buraya AdsGram Task entegrasyonundan gelen gerçek kodu ekleyeceksin.
-  // Örneğin (hayali örnek):
-  // window.Adsgram.task({ blockId: ADSGRAM_BLOCK_ID })
-  //   .then((result) => {
-  //      console.log("Task completed:", result);
-  //      // İstersen burada ek coin ödülü verebilirsin
-  //   })
-  //   .catch((err) => console.error("Task error:", err));
-
+  // Gerçek Task entegrasyon kodu buraya gelecek
   alert(
     "Task ad integration placeholder.\nLütfen AdsGram Task dokümanındaki gerçek kodu showAdsgramTask() içine ekle."
   );
@@ -144,7 +139,7 @@ function showAdsgramTask() {
 const TASKS = [
   {
     id: "reward_1",
-    type: "reward", // AdsGram rewarded video
+    type: "reward",
     iconType: "reward",
     iconEmoji: "🎬",
     title: "Watch a Reward Ad",
@@ -154,7 +149,7 @@ const TASKS = [
   },
   {
     id: "adsgram_task_1",
-    type: "adsgram_task", // AdsGram Task format (join/open)
+    type: "adsgram_task",
     iconType: "task",
     iconEmoji: "📲",
     title: "Complete AdsGram Task",
@@ -215,7 +210,6 @@ const TASKS = [
 let tonConnectUI = null;
 let connectedWalletAddress = null;
 
-// Demo manifest; gerçek projede kendi manifest.json'ını host etmelisin.
 const TONCONNECT_MANIFEST_URL =
   "https://ton-connect.github.io/demo-dapp-with-react-ui/tonconnect-manifest.json";
 
@@ -232,7 +226,6 @@ function initTonConnect() {
       buttonRootId: "ton-connect-button",
     });
 
-    // Cüzdan durumu değiştiğinde (connect/disconnect)
     tonConnectUI.onStatusChange(function (wallet) {
       if (wallet) {
         connectedWalletAddress = wallet.account.address;
@@ -255,7 +248,7 @@ function initTonConnect() {
   }
 }
 
-// Örnek: TON ile coin satın alma (şu an sadece iskelet)
+// Örnek: TON ile coin satın alma (şu an iskelet)
 async function buyCoinsWithTon() {
   if (!tonConnectUI || !connectedWalletAddress) {
     alert("Lütfen önce TON cüzdanınızı bağlayın.");
@@ -263,14 +256,12 @@ async function buyCoinsWithTon() {
   }
 
   try {
-    // ÖRNEK: 0.1 TON gönderim isteği (nanoTON cinsinden 100000000)
     await tonConnectUI.sendTransaction({
       validUntil: Math.floor(Date.now() / 1000) + 300,
       messages: [
         {
-          // BURAYA kendi geliştirici cüzdan adresini yazman gerekir
           address: "YOUR_TON_WALLET_ADDRESS",
-          amount: "100000000",
+          amount: "100000000", // 0.1 TON
         },
       ],
     });
@@ -282,11 +273,72 @@ async function buyCoinsWithTon() {
 }
 
 // ---------------------------
-// Kullanıcı başlatma (login mantığı)
+// Upgrade Cost hesaplama
+// ---------------------------
+
+function getUpgradeCost() {
+  if (!userState || typeof userState.tap_power !== "number") {
+    return 100;
+  }
+  // İlk seviye: tap_power = 1 => 100
+  // Sonraki her seviye için +100 artar: 100, 200, 300, ...
+  return userState.tap_power * 100;
+}
+
+// ---------------------------
+// Dil seçici
+// ---------------------------
+
+function initLanguageSelector() {
+  const langBtn = document.getElementById("current-lang");
+  const dropdown = document.getElementById("lang-dropdown");
+
+  if (!langBtn || !dropdown) return;
+
+  langBtn.addEventListener("click", () => {
+    dropdown.classList.toggle("hidden");
+  });
+
+  document.querySelectorAll(".lang-option").forEach((opt) => {
+    opt.addEventListener("click", () => {
+      currentLang = opt.dataset.lang;
+      localStorage.setItem("tap_lang", currentLang);
+      updateLangUI();
+      dropdown.classList.add("hidden");
+    });
+  });
+}
+
+function updateLangUI() {
+  const dict = LANG[currentLang] || LANG.en;
+  const tapBtn = document.getElementById("tap-btn");
+  const upgradeTitle = document.querySelector(".upgrade-section h2");
+  const upgradeBtn = document.getElementById("upgrade-tap-power-btn");
+  const walletTitle = document.querySelector(".wallet-title");
+  const buyTonBtn = document.getElementById("buy-coins-ton-btn");
+  const tasksTitle = document.querySelector(".tasks-title");
+  const tasksSubtitle = document.querySelector(".tasks-subtitle");
+  const langBtn = document.getElementById("current-lang");
+
+  const cost = getUpgradeCost();
+
+  if (tapBtn) tapBtn.textContent = dict.tap;
+  if (upgradeTitle) upgradeTitle.textContent = dict.upgrade_title;
+  if (upgradeBtn)
+    upgradeBtn.textContent = `${dict.upgrade_btn_prefix}${cost} coins)`;
+  if (walletTitle) walletTitle.textContent = dict.wallet_title;
+  if (buyTonBtn) buyTonBtn.textContent = dict.buy_ton;
+  if (tasksTitle) tasksTitle.textContent = dict.daily_tasks;
+  if (tasksSubtitle) tasksSubtitle.textContent = dict.daily_sub;
+  if (langBtn)
+    langBtn.textContent = currentLang === "en" ? "🇬🇧 EN" : "🇹🇷 TR";
+}
+
+// ---------------------------
+// Kullanıcı başlatma (login)
 // ---------------------------
 
 async function initUser() {
-  // 1) Telegram içinden açıldıysa user id al
   if (
     tg &&
     tg.initDataUnsafe &&
@@ -296,7 +348,6 @@ async function initUser() {
     userId = tg.initDataUnsafe.user.id;
     console.log("Telegram user id:", userId);
   } else {
-    // 2) Telegram yoksa local fallback
     console.log("Telegram user bulunamadı, local fallback kullanılacak.");
     const saved = window.localStorage.getItem("tap_user_id");
     if (saved) {
@@ -350,7 +401,6 @@ async function tapOnce() {
     userState = await res.json();
     renderUser();
 
-    // Reklam sayaç mantığı (interstitial için)
     tapCounter += 1;
     if (tapCounter >= TAPS_PER_AD) {
       tapCounter = 0;
@@ -362,7 +412,14 @@ async function tapOnce() {
 }
 
 async function upgradeTapPower() {
-  if (!userId) return;
+  if (!userId || !userState) return;
+
+  const cost = getUpgradeCost();
+
+  if (userState.coins < cost) {
+    alert("Not enough coins!");
+    return;
+  }
 
   try {
     const res = await fetch(API_BASE + "/api/upgrade/tap_power", {
@@ -391,13 +448,15 @@ async function upgradeTapPower() {
 function renderUser() {
   if (!userState) return;
 
-  var levelEl = document.getElementById("level");
-  var coinsEl = document.getElementById("coins");
-  var powerEl = document.getElementById("tap_power");
+  const levelEl = document.getElementById("level");
+  const coinsEl = document.getElementById("coins");
+  const powerEl = document.getElementById("tap_power");
 
   if (levelEl) levelEl.textContent = userState.level;
   if (coinsEl) coinsEl.textContent = userState.coins;
   if (powerEl) powerEl.textContent = userState.tap_power;
+
+  updateLangUI();
 }
 
 // ---------------------------
@@ -480,39 +539,38 @@ function openAffiliate(url) {
   }
 }
 
-// Eski boinker fonksiyonu hâlâ kullanılabilir istersen
 function openBoinkerAffiliate() {
   openAffiliate("https://t.me/boinker_bot?start=_tgr_TiWlA9A5YWY8");
 }
 
 // ---------------------------
-// Event Listener'lar
+// DOMContentLoaded
 // ---------------------------
 
 document.addEventListener("DOMContentLoaded", function () {
-  var tapBtn = document.getElementById("tap-btn");
-  var upgradeBtn = document.getElementById("upgrade-tap-power-btn");
-  var tonBuyBtn = document.getElementById("buy-coins-ton-btn");
-
-  if (tapBtn) {
-    tapBtn.addEventListener("click", tapOnce);
-  }
-  if (upgradeBtn) {
-    upgradeBtn.addEventListener("click", upgradeTapPower);
-  }
-  if (tonBuyBtn) {
-    tonBuyBtn.addEventListener("click", buyCoinsWithTon);
+  if (tg) {
+    try {
+      tg.expand();
+    } catch (e) {
+      console.log("Telegram WebApp expand error:", e);
+    }
   }
 
-  // Oyun kullanıcı login/iç durum başlat
+  const tapBtn = document.getElementById("tap-btn");
+  const upgradeBtn = document.getElementById("upgrade-tap-power-btn");
+  const tonBuyBtn = document.getElementById("buy-coins-ton-btn");
+
+  if (tapBtn) tapBtn.addEventListener("click", tapOnce);
+  if (upgradeBtn) upgradeBtn.addEventListener("click", upgradeTapPower);
+  if (tonBuyBtn) tonBuyBtn.addEventListener("click", buyCoinsWithTon);
+
+  // Dil seçici
+  initLanguageSelector();
+  updateLangUI();
+
+  // Kullanıcı / TON / AdsGram / Tasks
   initUser();
-
-  // TON wallet butonu
   initTonConnect();
-
-  // AdsGram SDK
   initAdsgram();
-
-  // Daily tasks board
   renderTasksBoard();
 });
