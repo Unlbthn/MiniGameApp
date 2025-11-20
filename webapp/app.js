@@ -10,7 +10,8 @@ const LANG = {
     wallet_title: "TON Wallet",
     buy_ton: "Buy coins with TON (beta)",
     daily_tasks: "Daily Tasks",
-    daily_sub: "Complete tasks to earn extra coins.",
+    daily_sub: "Complete tasks to earn extra coins and discover new apps.",
+    tasks_button: "Daily Tasks",
   },
   tr: {
     tap: "TIKLA",
@@ -20,6 +21,7 @@ const LANG = {
     buy_ton: "TON ile coin satın al (beta)",
     daily_tasks: "Günlük Görevler",
     daily_sub: "Ek coin kazanmak için görevleri tamamla.",
+    tasks_button: "Günlük Görevler",
   },
 };
 
@@ -35,18 +37,12 @@ const API_BASE = window.location.origin;
 // AdsGram: Reward + Interstitial
 // ---------------------------
 
-// Tap sayacı → belli sayıda tap'te bir interstitial tetiklemek için
 let tapCounter = 0;
-const TAPS_PER_AD = 50; // 50 tap'te bir reklam dene
-
-// Minimum süre kontrolü
+const TAPS_PER_AD = 50;
 let lastAdTime = 0;
-const AD_INTERVAL_MS = 60_000; // 1 dakika
+const AD_INTERVAL_MS = 60_000;
 
-// AdsGram controller
 let AdController = null;
-
-// AdsGram blockId / PlatformID
 const ADSGRAM_BLOCK_ID = "16514";
 
 function initAdsgram() {
@@ -62,14 +58,11 @@ function initAdsgram() {
   }
 }
 
-// Interstitial reklam (otomatik, ödülsüz)
 function maybeShowInterstitial() {
   if (!AdController) return;
 
   const now = Date.now();
-  if (now - lastAdTime < AD_INTERVAL_MS) {
-    return;
-  }
+  if (now - lastAdTime < AD_INTERVAL_MS) return;
 
   lastAdTime = now;
 
@@ -82,7 +75,6 @@ function maybeShowInterstitial() {
     });
 }
 
-// Rewarded reklam
 function showRewardAd() {
   if (!AdController) {
     alert("Reklam şu anda hazır değil.");
@@ -105,7 +97,6 @@ function showRewardAd() {
     });
 }
 
-// Şimdilik ödülü local state üzerinde veriyoruz
 function giveRewardCoins() {
   if (!userState) return;
   const rewardAmount = 500;
@@ -119,7 +110,6 @@ function giveRewardCoins() {
   alert(`+${rewardAmount} coin kazandın! 🎉`);
 }
 
-// AdsGram Task format hook
 function showAdsgramTask() {
   if (!window.Adsgram) {
     alert("AdsGram not available right now.");
@@ -248,7 +238,6 @@ function initTonConnect() {
   }
 }
 
-// Örnek: TON ile coin satın alma (şu an iskelet)
 async function buyCoinsWithTon() {
   if (!tonConnectUI || !connectedWalletAddress) {
     alert("Lütfen önce TON cüzdanınızı bağlayın.");
@@ -290,21 +279,20 @@ function getUpgradeCost() {
 // ---------------------------
 
 function initLanguageSelector() {
-  const langBtn = document.getElementById("current-lang");
-  const dropdown = document.getElementById("lang-dropdown");
+  const chips = document.querySelectorAll(".lang-chip");
+  chips.forEach((chip) => {
+    const lang = chip.dataset.lang;
+    if (lang === currentLang) {
+      chip.classList.add("active");
+    }
 
-  if (!langBtn || !dropdown) return;
-
-  langBtn.addEventListener("click", () => {
-    dropdown.classList.toggle("hidden");
-  });
-
-  document.querySelectorAll(".lang-option").forEach((opt) => {
-    opt.addEventListener("click", () => {
-      currentLang = opt.dataset.lang;
+    chip.addEventListener("click", () => {
+      currentLang = lang;
       localStorage.setItem("tap_lang", currentLang);
+      chips.forEach((c) =>
+        c.classList.toggle("active", c.dataset.lang === currentLang)
+      );
       updateLangUI();
-      dropdown.classList.add("hidden");
     });
   });
 }
@@ -318,7 +306,7 @@ function updateLangUI() {
   const buyTonBtn = document.getElementById("buy-coins-ton-btn");
   const tasksTitle = document.querySelector(".tasks-title");
   const tasksSubtitle = document.querySelector(".tasks-subtitle");
-  const langBtn = document.getElementById("current-lang");
+  const tasksOpenBtn = document.getElementById("open-tasks-btn");
 
   const cost = getUpgradeCost();
 
@@ -330,8 +318,7 @@ function updateLangUI() {
   if (buyTonBtn) buyTonBtn.textContent = dict.buy_ton;
   if (tasksTitle) tasksTitle.textContent = dict.daily_tasks;
   if (tasksSubtitle) tasksSubtitle.textContent = dict.daily_sub;
-  if (langBtn)
-    langBtn.textContent = currentLang === "en" ? "🇬🇧 EN" : "🇹🇷 TR";
+  if (tasksOpenBtn) tasksOpenBtn.textContent = dict.tasks_button;
 }
 
 // ---------------------------
@@ -415,7 +402,6 @@ async function upgradeTapPower() {
   if (!userId || !userState) return;
 
   const cost = getUpgradeCost();
-
   if (userState.coins < cost) {
     alert("Not enough coins!");
     return;
@@ -528,7 +514,7 @@ function handleTaskClick(task) {
 }
 
 // ---------------------------
-// Affiliate link opener
+// Modallar & Affiliate
 // ---------------------------
 
 function openAffiliate(url) {
@@ -539,8 +525,14 @@ function openAffiliate(url) {
   }
 }
 
-function openBoinkerAffiliate() {
-  openAffiliate("https://t.me/boinker_bot?start=_tgr_TiWlA9A5YWY8");
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove("hidden");
+}
+
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add("hidden");
 }
 
 // ---------------------------
@@ -559,16 +551,26 @@ document.addEventListener("DOMContentLoaded", function () {
   const tapBtn = document.getElementById("tap-btn");
   const upgradeBtn = document.getElementById("upgrade-tap-power-btn");
   const tonBuyBtn = document.getElementById("buy-coins-ton-btn");
+  const walletOpenBtn = document.getElementById("wallet-open-btn");
+  const openTasksBtn = document.getElementById("open-tasks-btn");
+  const closeButtons = document.querySelectorAll(".overlay-close");
 
   if (tapBtn) tapBtn.addEventListener("click", tapOnce);
   if (upgradeBtn) upgradeBtn.addEventListener("click", upgradeTapPower);
   if (tonBuyBtn) tonBuyBtn.addEventListener("click", buyCoinsWithTon);
+  if (walletOpenBtn)
+    walletOpenBtn.addEventListener("click", () => openModal("wallet-modal"));
+  if (openTasksBtn)
+    openTasksBtn.addEventListener("click", () => openModal("tasks-modal"));
 
-  // Dil seçici
+  closeButtons.forEach((btn) => {
+    const target = btn.getAttribute("data-close");
+    btn.addEventListener("click", () => closeModal(target));
+  });
+
+  // Dil, user, wallet, AdsGram, tasks
   initLanguageSelector();
   updateLangUI();
-
-  // Kullanıcı / TON / AdsGram / Tasks
   initUser();
   initTonConnect();
   initAdsgram();

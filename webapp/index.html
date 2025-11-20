@@ -20,12 +20,15 @@
 <body>
   <div class="container">
     <div class="game-card">
-      <!-- Dil seçici -->
-      <div class="lang-selector">
-        <div id="current-lang" class="lang-btn">🇬🇧 EN</div>
-        <div id="lang-dropdown" class="lang-dropdown hidden">
-          <div class="lang-option" data-lang="en">🇬🇧 English</div>
-          <div class="lang-option" data-lang="tr">🇹🇷 Türkçe</div>
+      <!-- Üst bar: solda wallet, sağda dil seçici -->
+      <div class="top-bar">
+        <button id="wallet-open-btn" class="icon-btn" title="TON Wallet">
+          💎
+        </button>
+
+        <div class="lang-toggle">
+          <button class="lang-chip" data-lang="en">EN</button>
+          <button class="lang-chip" data-lang="tr">TR</button>
         </div>
       </div>
 
@@ -51,31 +54,42 @@
         </button>
       </div>
 
-      <!-- TON Wallet alanı -->
-      <div class="wallet-section">
-        <h2 class="wallet-title">TON Wallet</h2>
-        <div id="ton-connect-button"></div>
-        <p id="wallet-address"></p>
-        <button id="buy-coins-ton-btn" class="wallet-buy-btn">
-          Buy coins with TON (beta)
+      <!-- Daily Tasks açma butonu -->
+      <div class="tasks-open-section">
+        <button id="open-tasks-btn" class="tasks-open-btn">
+          Daily Tasks
         </button>
       </div>
+    </div>
+  </div>
 
-      <!-- Daily Tasks board -->
-      <div class="tasks-board">
-        <div class="tasks-header">
-          <div>
-            <h2 class="tasks-title">Daily Tasks</h2>
-            <p class="tasks-subtitle">
-              Complete tasks to earn extra coins.
-            </p>
-          </div>
-          <div class="tasks-badge">🔥 Hot</div>
-        </div>
+  <!-- TON Wallet Modal -->
+  <div id="wallet-modal" class="overlay hidden">
+    <div class="overlay-card">
+      <div class="overlay-header">
+        <h2 class="wallet-title">TON Wallet</h2>
+        <button class="overlay-close" data-close="wallet-modal">✕</button>
+      </div>
+      <div id="ton-connect-button"></div>
+      <p id="wallet-address"></p>
+      <button id="buy-coins-ton-btn" class="wallet-buy-btn">
+        Buy coins with TON (beta)
+      </button>
+    </div>
+  </div>
 
-        <div id="tasks-list" class="tasks-list">
-          <!-- Görev kartları app.js tarafından dinamik olarak doldurulacak -->
-        </div>
+  <!-- Daily Tasks Modal -->
+  <div id="tasks-modal" class="overlay hidden">
+    <div class="overlay-card">
+      <div class="overlay-header">
+        <h2 class="tasks-title">Daily Tasks</h2>
+        <button class="overlay-close" data-close="tasks-modal">✕</button>
+      </div>
+      <p class="tasks-subtitle">
+        Complete tasks to earn extra coins and discover new apps.
+      </p>
+      <div id="tasks-list" class="tasks-list">
+        <!-- Görev kartları app.js tarafından doldurulacak -->
       </div>
     </div>
   </div>
