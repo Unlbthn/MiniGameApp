@@ -3,8 +3,6 @@ from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     WebAppInfo,
-    KeyboardButton,
-    ReplyKeyboardMarkup,
 )
 from telegram.ext import (
     ApplicationBuilder,
@@ -12,21 +10,14 @@ from telegram.ext import (
     ContextTypes,
 )
 import logging
-import os
 
 # -----------------------------
 # AYARLAR
 # -----------------------------
 
-# 1) BOT TOKEN
-# Token'i burada düz yazabilirsin ama güvenlik için repo'yu private tut.
-BOT_TOKEN = "8419572595:AAEMQSSTS_W2PfTpC12j24oBbbdaIt5WRbk"  # Örn: "8419......"
-
-# 2) WEBAPP URL
-# Railway backend + webapp domenin:
+BOT_TOKEN = "8419572595:AAEMQSSTS_W2PfTpC12j24oBbbdaIt5WRbk"  # senin token'in
 WEBAPP_URL = "https://minigameapp-production.up.railway.app"
 
-# Logging (hata olduğunda terminalde görelim)
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO,
@@ -34,71 +25,48 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def game_button_inline() -> InlineKeyboardMarkup:
+    """Mesaj içinde gösterilecek inline 'Play Game' butonu."""
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                text="Play Game 🎮",
+                web_app=WebAppInfo(url=WEBAPP_URL),
+            )
+        ]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+
 # -----------------------------
 # KOMUTLAR
 # -----------------------------
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    /start komutu:
-    - Mesaj kutusunun ALTINA kalıcı bir "Oyuna Başla 🎮" butonu koyar (ReplyKeyboard)
-    - Butona tıklayınca WebApp açılır.
-    """
-    keyboard = [
-        [
-            KeyboardButton(
-                text="Oyuna Başla 🎮",
-                web_app=WebAppInfo(url=WEBAPP_URL),
-            )
-        ]
-    ]
-
-    reply_markup = ReplyKeyboardMarkup(
-        keyboard,
-        resize_keyboard=True,    # Butonu klavyeye göre küçült
-        one_time_keyboard=False  # Hep altta kalsın
-    )
+    logger.info("/start komutu geldi")
 
     await update.message.reply_text(
-        "Merhaba! Aşağıdaki butondan oyunu başlatabilirsin 👇",
-        reply_markup=reply_markup,
+        "Tap To Earn Game'e hoş geldin!\n\n"
+        "Aşağıdaki butondan oyunu açabilirsin 👇",
+        reply_markup=game_button_inline(),
     )
 
 
 async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    /play komutu:
-    - Mesajın içinde inline buton gösterir.
-    - Bu da WebApp'i açar.
-    """
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                text="Oyuna Başla 🎮",
-                web_app=WebAppInfo(url=WEBAPP_URL),
-            )
-        ]
-    ]
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    logger.info("/play komutu geldi")
 
     await update.message.reply_text(
-        "Tap To Earn oyununu aşağıdaki butondan başlat 👇",
-        reply_markup=reply_markup,
+        "Oyunu başlatmak için aşağıdaki butona dokun 👇",
+        reply_markup=game_button_inline(),
     )
 
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    /help komutu: basit açıklama
-    """
-    text = (
+    await update.message.reply_text(
         "Komutlar:\n"
-        "/start - Oyuna başla butonunu gösterir\n"
-        "/play - Inline butonla oyunu açar\n\n"
-        "Oyunu açtıktan sonra ekrandaki TAP butonuna basarak coin kasabilirsin. 🎮"
+        "/start - Oyunu başlatma butonunu gösterir\n"
+        "/play  - Oyunu tekrar açmak için buton gösterir\n"
     )
-    await update.message.reply_text(text)
 
 
 # -----------------------------
@@ -106,17 +74,14 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # -----------------------------
 
 def main():
-    # Uygulama
-    application = ApplicationBuilder().token(BOT_TOKEN).build()
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    # Komut handler'ları
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("play", play))
-    application.add_handler(CommandHandler("help", help_cmd))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("play", play))
+    app.add_handler(CommandHandler("help", help_cmd))
 
-    # Botu başlat
     logger.info("Bot başlıyor...")
-    application.run_polling()
+    app.run_polling()
 
 
 if __name__ == "__main__":
