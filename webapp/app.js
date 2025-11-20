@@ -20,7 +20,7 @@ const API_BASE = window.location.origin;
 // AdsGram: Reward + Interstitial
 // ---------------------------
 
-// Tap sayacı → belirli sayıda tap'te bir interstitial tetiklemek için
+// Tap sayacı → belli sayıda tap'te bir interstitial tetiklemek için
 let tapCounter = 0;
 const TAPS_PER_AD = 50; // 50 tap'te bir reklam dene
 
@@ -32,8 +32,8 @@ const AD_INTERVAL_MS = 60_000; // 1 dakika
 let AdController = null;
 
 // blockId → AdsGram panelinden aldığın ID
-// Şu an için 16513 kullandık, panelde farklıysa değiştir.
-const ADSGRAM_BLOCK_ID = "16513";
+// Moderasyon mesajında PlatformID: 16514 dedin, burada onu kullanıyoruz.
+const ADSGRAM_BLOCK_ID = "16514";
 
 function initAdsgram() {
   if (window.Adsgram && !AdController) {
