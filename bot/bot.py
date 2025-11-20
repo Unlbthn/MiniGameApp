@@ -5,7 +5,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 BOT_TOKEN = "8419572595:AAEMQSSTS_W2PfTpC12j24oBbbdaIt5WRbk"
 
 # Backend + WebApp'in host edildiği URL (örn: https://senin-app.onrender.com)
-WEBAPP_URL = "http://127.0.0.1:8000"
+WEBAPP_URL = "minigameapp-production.up.railway.app"
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
