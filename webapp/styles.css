@@ -5,7 +5,8 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
   background: radial-gradient(circle at top, #0f172a 0, #020617 45%, #000 100%);
   color: #e5e7eb;
   display: flex;
@@ -131,43 +132,140 @@ h1 {
   word-break: break-all;
 }
 
-/* Görevler / Boinker affiliate alanı */
-
-.tasks-section {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px dashed rgba(75, 85, 99, 0.7);
-}
-
-.tasks-title {
-  font-size: 14px;
-  color: #9ca3af;
-  margin: 0 0 8px 0;
-}
-
-.task-button {
-  width: 100%;
-  padding: 9px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(59, 130, 246, 0.5);
-  background: rgba(15, 23, 42, 0.95);
-  color: #dbeafe;
-  font-size: 13px;
-  text-align: left;
+.wallet-buy-btn {
+  margin-top: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.7);
+  background: rgba(15, 23, 42, 0.98);
+  color: #e0f2fe;
+  font-size: 11px;
   cursor: pointer;
 }
 
-.task-button span {
-  display: block;
+.wallet-buy-btn:active {
+  transform: scale(0.97);
+}
+
+/* Daily Tasks board */
+
+.tasks-board {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed rgba(75, 85, 99, 0.7);
+}
+
+.tasks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.tasks-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #e5f2ff;
+}
+
+.tasks-subtitle {
+  margin: 2px 0 0 0;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.tasks-badge {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f97316, #facc15);
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Görev kartları */
+
+.task-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(51, 65, 85, 0.9);
+}
+
+.task-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+/* icon renkleri type'a göre */
+
+.task-icon.reward {
+  background: radial-gradient(circle at 30% 20%, #22c55e 0, #16a34a 40%, #14532d 100%);
+}
+
+.task-icon.task {
+  background: radial-gradient(circle at 30% 20%, #38bdf8 0, #0ea5e9 40%, #0369a1 100%);
+}
+
+.task-icon.affiliate {
+  background: radial-gradient(circle at 30% 20%, #a855f7 0, #7c3aed 40%, #4c1d95 100%);
+}
+
+.task-main {
+  flex: 1;
+}
+
+.task-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e5f2ff;
+}
+
+.task-desc {
+  margin: 2px 0 0 0;
   font-size: 11px;
   color: #9ca3af;
 }
 
-.task-button:active {
-  transform: scale(0.98);
+.task-reward {
+  font-size: 11px;
+  color: #facc15;
+  font-weight: 600;
+  margin-top: 4px;
 }
 
-/* Genel */
+.task-cta-btn {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: rgba(15, 23, 42, 0.9);
+  color: #e5f2ff;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.task-cta-btn:active {
+  transform: scale(0.97);
+}
+
+/* Genel button reset */
 
 button {
   font-family: inherit;

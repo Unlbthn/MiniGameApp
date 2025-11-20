@@ -114,6 +114,100 @@ function giveRewardCoins() {
   alert(`+${rewardAmount} coin kazandın! 🎉`);
 }
 
+// AdsGram Task format (örnek hook)
+// NOT: Task formatı için init gerekmediğini AdsGram dokümanında söylüyor.
+// Buradaki fonksiyonun içine, AdsGram Task entegrasyon dokümanındaki kodu eklemelisin.
+function showAdsgramTask() {
+  if (!window.Adsgram) {
+    alert("AdsGram not available right now.");
+    return;
+  }
+
+  // Buraya AdsGram Task entegrasyonundan gelen gerçek kodu ekleyeceksin.
+  // Örneğin (hayali örnek):
+  // window.Adsgram.task({ blockId: ADSGRAM_BLOCK_ID })
+  //   .then((result) => {
+  //      console.log("Task completed:", result);
+  //      // İstersen burada ek coin ödülü verebilirsin
+  //   })
+  //   .catch((err) => console.error("Task error:", err));
+
+  alert(
+    "Task ad integration placeholder.\nLütfen AdsGram Task dokümanındaki gerçek kodu showAdsgramTask() içine ekle."
+  );
+}
+
+// ---------------------------
+// Daily Tasks Config
+// ---------------------------
+
+const TASKS = [
+  {
+    id: "reward_1",
+    type: "reward", // AdsGram rewarded video
+    iconType: "reward",
+    iconEmoji: "🎬",
+    title: "Watch a Reward Ad",
+    description: "Watch 1 full ad and get bonus coins.",
+    rewardText: "+500 coins",
+    actionText: "WATCH",
+  },
+  {
+    id: "adsgram_task_1",
+    type: "adsgram_task", // AdsGram Task format (join/open)
+    iconType: "task",
+    iconEmoji: "📲",
+    title: "Complete AdsGram Task",
+    description: "Finish a sponsor task to earn a big bonus.",
+    rewardText: "+1000 coins",
+    actionText: "START",
+  },
+  {
+    id: "affiliate_boinker",
+    type: "affiliate",
+    iconType: "affiliate",
+    iconEmoji: "🧠",
+    title: "Open Boinker Mini-App",
+    description: "Open Boinker from Telegram and explore.",
+    rewardText: "+800 coins (manual)",
+    actionText: "OPEN",
+    url: "https://t.me/boinker_bot?start=_tgr_TiWlA9A5YWY8",
+  },
+  {
+    id: "affiliate_dotcoin",
+    type: "affiliate",
+    iconType: "affiliate",
+    iconEmoji: "🟡",
+    title: "Check DotCoin Bot",
+    description: "Visit DotCoin and see trending tasks.",
+    rewardText: "External",
+    actionText: "OPEN",
+    url: "https://t.me/dotcoin_bot",
+  },
+  {
+    id: "affiliate_bbqcoin",
+    type: "affiliate",
+    iconType: "affiliate",
+    iconEmoji: "🍖",
+    title: "Visit BBQCoin",
+    description: "Join a fun tap-to-earn partner game.",
+    rewardText: "External",
+    actionText: "OPEN",
+    url: "https://t.me/BBQCoin_bot",
+  },
+  {
+    id: "affiliate_gemz",
+    type: "affiliate",
+    iconType: "affiliate",
+    iconEmoji: "💎",
+    title: "Visit Gemz Coin",
+    description: "Discover Gemz and new missions.",
+    rewardText: "External",
+    actionText: "OPEN",
+    url: "https://t.me/gemzcoin_bot",
+  },
+];
+
 // ---------------------------
 // TONCONNECT: TON Wallet entegrasyonu
 // ---------------------------
@@ -193,7 +287,12 @@ async function buyCoinsWithTon() {
 
 async function initUser() {
   // 1) Telegram içinden açıldıysa user id al
-  if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+  if (
+    tg &&
+    tg.initDataUnsafe &&
+    tg.initDataUnsafe.user &&
+    tg.initDataUnsafe.user.id
+  ) {
     userId = tg.initDataUnsafe.user.id;
     console.log("Telegram user id:", userId);
   } else {
@@ -302,17 +401,88 @@ function renderUser() {
 }
 
 // ---------------------------
-// Boinker affiliate task
+// Tasks UI & Handlers
 // ---------------------------
 
-function openBoinkerAffiliate() {
-  var url = "https://t.me/boinker_bot?start=_tgr_TiWlA9A5YWY8";
+function renderTasksBoard() {
+  const container = document.getElementById("tasks-list");
+  if (!container) return;
 
+  container.innerHTML = "";
+
+  TASKS.forEach((task) => {
+    const card = document.createElement("div");
+    card.className = "task-card";
+
+    const icon = document.createElement("div");
+    icon.className = "task-icon " + task.iconType;
+    icon.textContent = task.iconEmoji || "⭐";
+
+    const main = document.createElement("div");
+    main.className = "task-main";
+
+    const titleEl = document.createElement("p");
+    titleEl.className = "task-title";
+    titleEl.textContent = task.title;
+
+    const descEl = document.createElement("p");
+    descEl.className = "task-desc";
+    descEl.textContent = task.description;
+
+    const rewardEl = document.createElement("div");
+    rewardEl.className = "task-reward";
+    rewardEl.textContent = task.rewardText;
+
+    main.appendChild(titleEl);
+    main.appendChild(descEl);
+    main.appendChild(rewardEl);
+
+    const ctaBtn = document.createElement("button");
+    ctaBtn.className = "task-cta-btn";
+    ctaBtn.textContent = task.actionText || "GO";
+    ctaBtn.addEventListener("click", function () {
+      handleTaskClick(task);
+    });
+
+    card.appendChild(icon);
+    card.appendChild(main);
+    card.appendChild(ctaBtn);
+
+    container.appendChild(card);
+  });
+}
+
+function handleTaskClick(task) {
+  switch (task.type) {
+    case "reward":
+      showRewardAd();
+      break;
+    case "adsgram_task":
+      showAdsgramTask();
+      break;
+    case "affiliate":
+      openAffiliate(task.url);
+      break;
+    default:
+      console.log("Unknown task type:", task);
+  }
+}
+
+// ---------------------------
+// Affiliate link opener
+// ---------------------------
+
+function openAffiliate(url) {
   if (tg && tg.openTelegramLink) {
     tg.openTelegramLink(url);
   } else {
     window.open(url, "_blank");
   }
+}
+
+// Eski boinker fonksiyonu hâlâ kullanılabilir istersen
+function openBoinkerAffiliate() {
+  openAffiliate("https://t.me/boinker_bot?start=_tgr_TiWlA9A5YWY8");
 }
 
 // ---------------------------
@@ -322,9 +492,7 @@ function openBoinkerAffiliate() {
 document.addEventListener("DOMContentLoaded", function () {
   var tapBtn = document.getElementById("tap-btn");
   var upgradeBtn = document.getElementById("upgrade-tap-power-btn");
-  var boinkerTaskBtn = document.getElementById("boinker-task-btn");
   var tonBuyBtn = document.getElementById("buy-coins-ton-btn");
-  var watchAdBtn = document.getElementById("watch-ad-btn");
 
   if (tapBtn) {
     tapBtn.addEventListener("click", tapOnce);
@@ -332,14 +500,8 @@ document.addEventListener("DOMContentLoaded", function () {
   if (upgradeBtn) {
     upgradeBtn.addEventListener("click", upgradeTapPower);
   }
-  if (boinkerTaskBtn) {
-    boinkerTaskBtn.addEventListener("click", openBoinkerAffiliate);
-  }
   if (tonBuyBtn) {
     tonBuyBtn.addEventListener("click", buyCoinsWithTon);
-  }
-  if (watchAdBtn) {
-    watchAdBtn.addEventListener("click", showRewardAd);
   }
 
   // Oyun kullanıcı login/iç durum başlat
@@ -350,4 +512,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // AdsGram SDK
   initAdsgram();
+
+  // Daily tasks board
+  renderTasksBoard();
 });

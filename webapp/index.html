@@ -1,34 +1,77 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>Tap To Earn</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="styles.css" />
-<script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- TonConnect UI -->
+  <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+
+  <!-- AdsGram SDK (sad.min.js) -->
+  <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="container">
-    <h1>Tap To Earn</h1>
+    <div class="game-card">
+      <h1>Tap To Earn</h1>
 
-    <div id="user-info" class="card">
-      <p>Level: <span id="level">-</span></p>
-      <p>Coins: <span id="coins">-</span></p>
-      <p>Tap Power: <span id="tap_power">-</span></p>
-    </div>
+      <!-- Kullanıcı info -->
+      <div id="user-info">
+        <p>Level: <span id="level">-</span></p>
+        <p>Coins: <span id="coins">-</span></p>
+        <p>Tap Power: <span id="tap_power">-</span></p>
+      </div>
 
-    <button id="tap-btn" class="tap-button">TAP</button>
+      <!-- TAP butonu -->
+      <div class="tap-wrapper">
+        <button id="tap-btn">TAP</button>
+      </div>
 
-    <div class="upgrade-section">
-      <h2>Upgrade</h2>
-      <button id="upgrade-tap-power-btn" class="upgrade-button">
-        Tap Power Artır (50 coin)
-      </button>
+      <!-- Upgrade alanı -->
+      <div class="upgrade-section">
+        <h2>Upgrade</h2>
+        <button id="upgrade-tap-power-btn">
+          Increase Tap Power (cost: 50 coins)
+        </button>
+      </div>
+
+      <!-- TON Wallet alanı -->
+      <div class="wallet-section">
+        <h2 class="wallet-title">TON Wallet</h2>
+        <div id="ton-connect-button"></div>
+        <p id="wallet-address"></p>
+        <button id="buy-coins-ton-btn" class="wallet-buy-btn">
+          Buy coins with TON (beta)
+        </button>
+      </div>
+
+      <!-- Daily Tasks board -->
+      <div class="tasks-board">
+        <div class="tasks-header">
+          <div>
+            <h2 class="tasks-title">Daily Tasks</h2>
+            <p class="tasks-subtitle">
+              Complete tasks to earn extra coins and discover new apps.
+            </p>
+          </div>
+          <div class="tasks-badge">🔥 Hot</div>
+        </div>
+
+        <div id="tasks-list" class="tasks-list">
+          <!-- Görev kartları app.js tarafından dinamik olarak doldurulacak -->
+        </div>
+      </div>
     </div>
   </div>
 
+  <!-- App logic -->
   <script src="app.js"></script>
 </body>
 </html>
