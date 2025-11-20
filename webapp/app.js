@@ -17,56 +17,101 @@ let userState = null;
 const API_BASE = window.location.origin;
 
 // ---------------------------
-// Adsgram: Reklam kontrol değişkenleri
+// AdsGram: Reward + Interstitial
 // ---------------------------
 
+// Tap sayacı → belirli sayıda tap'te bir interstitial tetiklemek için
 let tapCounter = 0;
-const TAPS_PER_AD = 50;           // 50 tap'te bir reklam dene
-let lastAdTime = 0;
-const AD_INTERVAL_MS = 60_000;    // minimum 1 dakika arayla reklam
+const TAPS_PER_AD = 50; // 50 tap'te bir reklam dene
 
-// Adsgram için basit hazır/var mı kontrolü
-// PlatformID: 16511
-let adsgramReady = false;
+// Minimum süre kontrolü (aynı anda hem tap hem süreye bakabiliriz)
+let lastAdTime = 0;
+const AD_INTERVAL_MS = 60_000; // 1 dakika
+
+// AdsGram controller
+let AdController = null;
+
+// blockId → AdsGram panelinden aldığın ID
+// Şu an için 16513 kullandık, panelde farklıysa değiştir.
+const ADSGRAM_BLOCK_ID = "16513";
 
 function initAdsgram() {
-  // Burada index.html'e eklediğin Adsgram script'ine göre kontrolü güncelle.
-  // Örneğin Adsgram global objesinin adı "adsgram" ise:
-  if (window.adsgram) {
-    adsgramReady = true;
-    console.log("Adsgram SDK hazır (PlatformID: 16511)");
-  } else {
-    console.log(
-      "Adsgram SDK bulunamadı. Lütfen Adsgram dokümantasyonundaki <script> kodunu index.html'e ekle."
-    );
+  if (window.Adsgram && !AdController) {
+    try {
+      AdController = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
+      console.log("AdsGram SDK init edildi, blockId:", ADSGRAM_BLOCK_ID);
+    } catch (err) {
+      console.error("AdsGram init hatası:", err);
+    }
+  } else if (!window.Adsgram) {
+    console.log("AdsGram SDK bulunamadı. sad.min.js script'i yüklü mü?");
   }
 }
 
-function maybeShowAd() {
+// Interstitial reklam (otomatik, ödülsüz)
+// Kullanıcı AdController.show() ile reklamı izler veya kapatır.
+// Biz sadece görüntüleme başına CPM kazanırız.
+function maybeShowInterstitial() {
+  if (!AdController) return;
+
   const now = Date.now();
 
-  // Çok sık reklam göstermemek için minimum süre kontrolü
+  // Çok sık reklam göstermemek için zaman kontrolü
   if (now - lastAdTime < AD_INTERVAL_MS) {
     return;
   }
 
   lastAdTime = now;
 
-  try {
-    if (adsgramReady && window.adsgram) {
-      // ÖRNEK:
-      // Eğer Adsgram "showInterstitial" fonksiyonu veriyorsa:
-      // window.adsgram.showInterstitial();
-      //
-      // Kendi panelindeki entegrasyon dokümanına göre
-      // bu satırı doğru fonksiyon adıyla değiştirmen gerekiyor.
-      console.log("Reklam tetiklenmeli (Adsgram fonksiyonunu buraya ekle)");
-    } else {
-      console.log("Adsgram hazır değil, reklam gösterilmedi.");
-    }
-  } catch (err) {
-    console.error("Reklam gösterilemedi:", err);
+  AdController.show()
+    .then((result) => {
+      console.log("Interstitial gösterildi:", result);
+      // Interstitial'de ödül zorunlu değil, sadece gösterimden kazanıyoruz.
+    })
+    .catch((err) => {
+      console.error("Interstitial gösterilemedi:", err);
+    });
+}
+
+// Rewarded reklam (kullanıcı video/ads bitirince ödül)
+// Örnek: +500 coin
+function showRewardAd() {
+  if (!AdController) {
+    alert("Reklam şu anda hazır değil.");
+    return;
   }
+
+  AdController.show()
+    .then((result) => {
+      console.log("Reward ad sonucu:", result);
+
+      // done = true ve error = false ise kullanıcı sonuna kadar izlemiş demektir
+      if (result && result.done && !result.error) {
+        giveRewardCoins();
+      } else {
+        // Kullanıcı erken kapattı veya error oluştu
+        alert("Ödül kazanmak için reklamı sonuna kadar izlemen gerekiyor.");
+      }
+    })
+    .catch((err) => {
+      console.error("Reward ad hatası:", err);
+      alert("Reklam oynatılırken bir hata oluştu.");
+    });
+}
+
+// Şimdilik ödülü sadece local state üzerinde veriyoruz.
+// İleride backend'de /api/reward endpoint'i ile kalıcı hâle getirebilirsin.
+function giveRewardCoins() {
+  if (!userState) return;
+  const rewardAmount = 500;
+
+  userState.coins += rewardAmount;
+  if (typeof userState.total_coins === "number") {
+    userState.total_coins += rewardAmount;
+  }
+
+  renderUser();
+  alert(`+${rewardAmount} coin kazandın! 🎉`);
 }
 
 // ---------------------------
@@ -116,7 +161,7 @@ function initTonConnect() {
   }
 }
 
-// İleride ödeme butonu eklemek için örnek (şimdilik kullanılmıyor)
+// Örnek: TON ile coin satın alma (şu an sadece iskelet)
 async function buyCoinsWithTon() {
   if (!tonConnectUI || !connectedWalletAddress) {
     alert("Lütfen önce TON cüzdanınızı bağlayın.");
@@ -136,8 +181,7 @@ async function buyCoinsWithTon() {
       ],
     });
 
-    // Burada başarılı işlemden sonra backend'e "ödemeyi aldım" diye haber vermen gerekir.
-    console.log("Ödeme isteği gönderildi.");
+    console.log("TON ödeme isteği gönderildi.");
   } catch (err) {
     console.error("TON ödeme isteği hatası:", err);
   }
@@ -207,11 +251,11 @@ async function tapOnce() {
     userState = await res.json();
     renderUser();
 
-    // Reklam sayaç mantığı
+    // Reklam sayaç mantığı (interstitial için)
     tapCounter += 1;
     if (tapCounter >= TAPS_PER_AD) {
       tapCounter = 0;
-      maybeShowAd();
+      maybeShowInterstitial();
     }
   } catch (err) {
     console.error("tapOnce hata:", err);
@@ -265,7 +309,6 @@ function openBoinkerAffiliate() {
   var url = "https://t.me/boinker_bot?start=_tgr_TiWlA9A5YWY8";
 
   if (tg && tg.openTelegramLink) {
-    // Telegram içinden link aç
     tg.openTelegramLink(url);
   } else {
     window.open(url, "_blank");
@@ -281,6 +324,7 @@ document.addEventListener("DOMContentLoaded", function () {
   var upgradeBtn = document.getElementById("upgrade-tap-power-btn");
   var boinkerTaskBtn = document.getElementById("boinker-task-btn");
   var tonBuyBtn = document.getElementById("buy-coins-ton-btn");
+  var watchAdBtn = document.getElementById("watch-ad-btn");
 
   if (tapBtn) {
     tapBtn.addEventListener("click", tapOnce);
@@ -294,6 +338,9 @@ document.addEventListener("DOMContentLoaded", function () {
   if (tonBuyBtn) {
     tonBuyBtn.addEventListener("click", buyCoinsWithTon);
   }
+  if (watchAdBtn) {
+    watchAdBtn.addEventListener("click", showRewardAd);
+  }
 
   // Oyun kullanıcı login/iç durum başlat
   initUser();
@@ -301,6 +348,6 @@ document.addEventListener("DOMContentLoaded", function () {
   // TON wallet butonu
   initTonConnect();
 
-  // Adsgram (SDK varsa)
+  // AdsGram SDK
   initAdsgram();
 });
