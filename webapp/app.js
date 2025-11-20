@@ -1,26 +1,53 @@
-const tg = window.Telegram.WebApp;
+// Telegram WebApp objesi (varsa)
+const tg = window.Telegram ? window.Telegram.WebApp : null;
 
-// Uygulama açıldığında tam ekrana genişlet
-tg.expand();
+// Telegram içindeysek ekranı büyüt
+if (tg) {
+  try {
+    tg.expand();
+  } catch (e) {
+    console.log("Telegram WebApp expand error:", e);
+  }
+}
 
 let userId = null;
 let userState = null;
 
-// Backend ile aynı origin üzerinden konuşuyoruz (FastAPI + StaticFiles birlikte)
+// Backend ile aynı origin üzerinden konuşuyoruz
 const API_BASE = window.location.origin;
 
-// --- API Çağrıları ---
+// ---------------------------
+// Kullanıcıyı başlat
+// ---------------------------
+async function initUser() {
+  // 1) Telegram içinden açıldıysa buradan user id almaya çalış
+  if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+    userId = tg.initDataUnsafe.user.id;
+    console.log("Telegram user id:", userId);
+  } else {
+    // 2) Telegram bilgisi yoksa (ör. direkt browser) local fallback kullan
+    console.log("Telegram user bulunamadı, local fallback kullanılacak.");
+    const saved = localStorage.getItem("tap_user_id");
+    if (saved) {
+      userId = parseInt(saved, 10);
+    } else {
+      userId = Math.floor(Math.random() * 1_000_000_000);
+      localStorage.setItem("tap_user_id", userId.toString());
+    }
+  }
+
+  // Artık elimizde bir userId var, backend'den kullanıcıyı çekelim
+  await fetchUser();
+}
+
+// ---------------------------
+// API Çağrıları
+// ---------------------------
 
 async function fetchUser() {
+  if (!userId) return;
+
   try {
-    const user = tg.initDataUnsafe?.user;
-    if (!user) {
-      alert("Telegram kullanıcısı bulunamadı. Lütfen WebApp'i bot üzerinden aç.");
-      return;
-    }
-
-    userId = user.id;
-
     const res = await fetch(`${API_BASE}/api/me?telegram_id=${userId}`);
     if (!res.ok) {
       throw new Error("Kullanıcı bilgisi alınamadı");
@@ -29,8 +56,7 @@ async function fetchUser() {
     userState = await res.json();
     renderUser();
   } catch (err) {
-    console.error(err);
-    alert("Kullanıcı yüklenirken bir hata oluştu.");
+    console.error("fetchUser hata:", err);
   }
 }
 
@@ -54,7 +80,7 @@ async function tapOnce() {
     userState = await res.json();
     renderUser();
   } catch (err) {
-    console.error(err);
+    console.error("tapOnce hata:", err);
   }
 }
 
@@ -77,12 +103,13 @@ async function upgradeTapPower() {
     userState = await res.json();
     renderUser();
   } catch (err) {
-    console.error(err);
+    console.error("upgradeTapPower hata:", err);
   }
 }
 
-
-// --- UI Güncelleme ---
+// ---------------------------
+// UI Güncelleme
+// ---------------------------
 
 function renderUser() {
   if (!userState) return;
@@ -92,15 +119,21 @@ function renderUser() {
   document.getElementById("tap_power").innerText = userState.tap_power;
 }
 
-
-// --- Event Listener'lar ---
+// ---------------------------
+// Event Listener'lar
+// ---------------------------
 
 document.addEventListener("DOMContentLoaded", () => {
   const tapBtn = document.getElementById("tap-btn");
   const upgradeBtn = document.getElementById("upgrade-tap-power-btn");
 
-  tapBtn.addEventListener("click", tapOnce);
-  upgradeBtn.addEventListener("click", upgradeTapPower);
+  if (tapBtn) {
+    tapBtn.addEventListener("click", tapOnce);
+  }
+  if (upgradeBtn) {
+    upgradeBtn.addEventListener("click", upgradeTapPower);
+  }
 
-  fetchUser();
+  // Kullanıcıyı başlat
+  initUser();
 });
