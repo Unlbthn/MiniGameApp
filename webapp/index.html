@@ -2,113 +2,131 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Tap to Earn TON</title>
+    <!-- Double tap zoom'u engellemek için user-scalable=no -->
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
     />
-    <link rel="stylesheet" href="/static/styles.css" />
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>Tap to Earn TON</title>
+
+    <link rel="stylesheet" href="styles.css" />
+
     <!-- AdsGram SDK -->
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+
     <!-- TonConnect UI -->
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
   </head>
   <body>
-    <div class="app-root">
+    <div id="app-root">
       <!-- TOP BAR -->
-      <div class="top-bar">
-        <div class="left-group">
-          <!-- Wallet button -->
-          <button id="wallet-open-btn" class="icon-btn">
-            <span class="icon-circle">👛</span>
-            <span class="icon-label">Wallet</span>
+      <header class="top-bar">
+        <div class="top-left">
+          <!-- Wallet Button -->
+          <button id="wallet-open-btn" class="icon-button" aria-label="Wallet">
+            💼
           </button>
 
-          <!-- Language chips -->
-          <div class="lang-chips">
-            <div class="lang-chip" data-lang="en">
-              🇬🇧 <span>English</span>
-            </div>
-            <div class="lang-chip" data-lang="tr">
-              🇹🇷 <span>Türkçe</span>
+          <!-- TON Balance Pill -->
+          <div class="ton-balance-pill">
+            <div class="ton-icon">TON</div>
+            <div class="ton-balance-text">
+              <span>Balance</span>
+              <strong id="ton_balance_top">0.00</strong>
             </div>
           </div>
         </div>
 
-        <!-- TON balance -->
-        <div class="ton-balance-box">
-          <div class="ton-logo-circle">Ｔ</div>
-          <div class="ton-balance-text">
-            <span class="ton-label">TON</span>
-            <span id="ton_credits" class="ton-value">0.00</span>
+        <div class="top-center">
+          <h1 class="app-title">Tap to Earn TON</h1>
+        </div>
+
+        <div class="top-right">
+          <!-- Language selector -->
+          <div class="lang-selector">
+            <button class="lang-chip" data-lang="en">🇬🇧 EN</button>
+            <button class="lang-chip" data-lang="tr">🇹🇷 TR</button>
           </div>
         </div>
-      </div>
+      </header>
 
-      <!-- MAIN CARD -->
-      <div class="card">
-        <h1 class="game-title">Tap To Earn TON</h1>
+      <!-- MAIN CONTENT -->
+      <main class="main-container">
+        <!-- USER INFO CARD -->
+        <section class="card user-card">
+          <div id="user-info">
+            <p>Level: <span id="level">1</span></p>
+            <p>Coins: <span id="coins">0</span></p>
+            <p>Tap Power: <span id="tap_power">1</span></p>
+            <p><span>TON Credits:</span> <span id="ton_credits">0.00</span></p>
+          </div>
+        </section>
 
-        <div id="user-info" class="user-info">
-          <p>Level: <span id="level">-</span></p>
-          <p>Coins: <span id="coins">-</span></p>
-          <p>Tap Power: <span id="tap_power">-</span></p>
-        </div>
+        <!-- TAP AREA -->
+        <section class="tap-section">
+          <button id="tap-btn" class="tap-button">TAP</button>
+        </section>
 
-        <div class="tap-area">
-          <button id="tap-btn" class="tap-btn">TAP</button>
-        </div>
-
-        <hr class="divider" />
-
-        <section class="upgrade-section">
+        <!-- UPGRADE CARD -->
+        <section class="card upgrade-section">
           <h2>Upgrade</h2>
+          <p>
+            Spend your coins to increase tap power and earn more with each tap.
+          </p>
           <button id="upgrade-tap-power-btn" class="primary-btn">
             Increase Tap Power (cost: 100 coins)
           </button>
         </section>
 
-        <section class="tasks-entry">
+        <!-- ACTIONS ROW -->
+        <section class="actions-row">
           <button id="open-tasks-btn" class="secondary-btn">
-            Daily Tasks
+            📝 Daily Tasks
+          </button>
+          <button id="buy-coins-ton-btn" class="secondary-btn">
+            💎 Buy coins with TON (beta)
           </button>
         </section>
-      </div>
+      </main>
     </div>
 
     <!-- WALLET MODAL -->
-    <div id="wallet-modal" class="overlay hidden">
-      <div class="overlay-content">
-        <div class="overlay-header">
-          <h2>TON Wallet</h2>
-          <button class="overlay-close" data-close="wallet-modal">✕</button>
+    <div id="wallet-modal" class="modal hidden">
+      <div class="modal-content wallet-content animate-fade">
+        <div class="modal-header">
+          <h2 class="wallet-title">TON Wallet</h2>
+          <button class="close-btn overlay-close" data-close="wallet-modal">
+            ×
+          </button>
         </div>
         <p class="wallet-subtitle">
-          Connect your TON wallet to buy coins and receive rewards.
+          Connect your TON wallet to enable on-chain rewards and purchases.
         </p>
-        <div id="ton-connect-button" class="ton-connect-container"></div>
+
+        <div id="ton-connect-button" class="ton-connect-button"></div>
+
         <p id="wallet-address" class="wallet-address"></p>
-        <button id="buy-coins-ton-btn" class="primary-btn full-width">
-          Buy coins with TON (beta)
-        </button>
       </div>
     </div>
 
-    <!-- TASKS MODAL (Boinker style) -->
-    <div id="tasks-modal" class="overlay hidden">
-      <div class="overlay-content tasks-overlay">
-        <div class="overlay-header">
+    <!-- TASKS MODAL (BOINKER STYLE) -->
+    <div id="tasks-modal" class="modal hidden">
+      <div class="modal-content tasks-content animate-fade">
+        <div class="modal-header">
           <h2 class="tasks-title">Daily Tasks</h2>
-          <button class="overlay-close" data-close="tasks-modal">✕</button>
+          <button class="close-btn overlay-close" data-close="tasks-modal">
+            ×
+          </button>
         </div>
+
         <p class="tasks-subtitle">
           Complete tasks to earn extra coins and TON credits.
         </p>
-        <div id="tasks-list" class="tasks-list"></div>
+
+        <div id="tasks-grid" class="tasks-grid"></div>
       </div>
     </div>
 
-    <script src="/static/app.js"></script>
+    <script src="app.js"></script>
   </body>
 </html>
