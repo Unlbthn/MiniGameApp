@@ -38,6 +38,91 @@ const API_BASE = window.location.origin;
 // ---------------------------
 // AdsGram
 // ---------------------------
+// ---------------------------
+// AdsGram
+// ---------------------------
+
+// Rewarded Ad Block
+const ADSGRAM_REWARD_BLOCK_ID = "17996";
+
+// Interstitial Ad Block
+const ADSGRAM_INTERSTITIAL_BLOCK_ID = "int-17995";
+
+let AdReward = null;
+let AdInter = null;
+
+function initAdsgram() {
+  if (window.Adsgram) {
+    try {
+      // Rewarded
+      AdReward = window.Adsgram.init({
+        blockId: ADSGRAM_REWARD_BLOCK_ID,
+      });
+
+      // Interstitial
+      AdInter = window.Adsgram.init({
+        blockId: ADSGRAM_INTERSTITIAL_BLOCK_ID,
+      });
+
+      console.log("AdsGram initialized:", {
+        reward: ADSGRAM_REWARD_BLOCK_ID,
+        interstitial: ADSGRAM_INTERSTITIAL_BLOCK_ID,
+      });
+
+    } catch (err) {
+      console.error("AdsGram init error:", err);
+    }
+  } else {
+    console.log("AdsGram SDK not loaded!");
+  }
+}
+
+// ---------------------------
+// Interstitial Logic
+// ---------------------------
+let tapCounter = 0;
+const TAPS_PER_AD = 50;
+let lastAdTime = 0;
+const AD_INTERVAL_MS = 60_000;
+
+function maybeShowInterstitial() {
+  if (!AdInter) return;
+
+  const now = Date.now();
+  if (now - lastAdTime < AD_INTERVAL_MS) return;
+
+  lastAdTime = now;
+
+  AdInter.show()
+    .then((res) => console.log("Interstitial shown:", res))
+    .catch((err) => console.error("Interstitial failed:", err));
+}
+
+// ---------------------------
+// Rewarded Logic
+// ---------------------------
+function showRewardAd() {
+  if (!AdReward) {
+    alert("Reklam şu anda hazır değil.");
+    return;
+  }
+
+  AdReward.show()
+    .then((result) => {
+      if (result && result.done && !result.error) {
+        claimAdRewardFromBackend();
+      } else {
+        alert("Ödül için reklamı tamamen izlemen gerekiyor.");
+      }
+    })
+    .catch((err) => {
+      console.error("Reward error:", err);
+      alert("Reklam açılırken bir hata oluştu.");
+    });
+}
+
+
+
 let tapCounter = 0;
 const TAPS_PER_AD = 50;
 let lastAdTime = 0;
