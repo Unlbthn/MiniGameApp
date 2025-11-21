@@ -1,11 +1,42 @@
-# backend/main.py
-
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
-from sqlalchemy.orm import Session
-from .db import SessionLocal
-from .models import User, TaskStatus
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
 import os
+
+from .db import SessionLocal, engine, Base
+from .models import User, TaskStatus
+
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI()
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ==== STATIC FILES ====
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+WEBAPP_DIR = os.path.join(BASE_DIR, "..", "webapp")
+
+# Webapp folder içinde styles.css ve app.js olduğundan burayı mount ediyoruz
+app.mount("/static", StaticFiles(directory=WEBAPP_DIR), name="static")
+
+
+@app.get("/", response_class=HTMLResponse)
+def serve_index():
+    """Serve webapp/index.html"""
+    index_path = os.path.join(WEBAPP_DIR, "index.html")
+    return FileResponse(index_path)
+
+# ==== (buradan sonrası değişmeden devam edecek) ====
 
 # -----------------------------------------------------
 # LEVEL SİSTEMİ AYARLARI
@@ -29,11 +60,6 @@ def recalc_level(user: User):
         user.level = int(new_level)
 
 
-# -----------------------------------------------------
-# FastAPI App
-# -----------------------------------------------------
-
-app = FastAPI()
 
 
 # -----------------------------------------------------
