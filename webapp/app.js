@@ -1,7 +1,9 @@
 // Telegram WebApp objesi
 const tg = window.Telegram ? window.Telegram.WebApp : null;
 
+// ---------------------------
 // Dil metinleri
+// ---------------------------
 const LANG = {
   en: {
     tap: "TAP",
@@ -35,12 +37,14 @@ let userState = null;
 // Backend origin
 const API_BASE = window.location.origin;
 
-// Double-tap zoom engelleme (özellikle iOS için)
+// ---------------------------
+// Double-tap zoom engelleme
+// ---------------------------
 let lastTouchEnd = 0;
 document.addEventListener(
   "touchend",
   function (event) {
-    const now = Date.now();
+    const now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
       event.preventDefault();
     }
@@ -52,58 +56,57 @@ document.addEventListener(
 // ---------------------------
 // AdsGram
 // ---------------------------
-
-// Rewarded Ad Block
-const ADSGRAM_REWARD_BLOCK_ID = "17996";
-// Interstitial Ad Block
-const ADSGRAM_INTERSTITIAL_BLOCK_ID = "int-17995";
-
-let AdReward = null;
 let AdInter = null;
+let AdReward = null;
+
+// AdsGram block ID'leri
+const ADSGRAM_BLOCK_ID_INTER = "int-17995"; // Interstitial
+const ADSGRAM_BLOCK_ID_REWARD = "17996"; // Rewarded
 
 function initAdsgram() {
   if (!window.Adsgram) {
-    console.log("AdsGram SDK not loaded");
+    console.log("AdsGram SDK yok (sad.min.js yüklü mü?)");
     return;
   }
 
   try {
-    AdReward = window.Adsgram.init({
-      blockId: ADSGRAM_REWARD_BLOCK_ID,
-    });
+    if (!AdInter) {
+      AdInter = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID_INTER });
+      console.log("AdsGram Interstitial init:", ADSGRAM_BLOCK_ID_INTER);
+    }
+  } catch (e) {
+    console.error("AdsGram interstitial init error:", e);
+  }
 
-    AdInter = window.Adsgram.init({
-      blockId: ADSGRAM_INTERSTITIAL_BLOCK_ID,
-    });
-
-    console.log("AdsGram initialized", {
-      reward: ADSGRAM_REWARD_BLOCK_ID,
-      interstitial: ADSGRAM_INTERSTITIAL_BLOCK_ID,
-    });
-  } catch (err) {
-    console.error("AdsGram init error:", err);
+  try {
+    if (!AdReward) {
+      AdReward = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID_REWARD });
+      console.log("AdsGram Reward init:", ADSGRAM_BLOCK_ID_REWARD);
+    }
+  } catch (e) {
+    console.error("AdsGram reward init error:", e);
   }
 }
 
-// Interstitial ayarları
 let tapCounter = 0;
-const TAPS_PER_AD = 50; // istersen 40'a çekebiliriz
+const TAPS_PER_AD = 50;
 let lastAdTime = 0;
 const AD_INTERVAL_MS = 60_000;
 
+// Araya interstitial reklam koy
 function maybeShowInterstitial() {
   if (!AdInter) return;
   const now = Date.now();
   if (now - lastAdTime < AD_INTERVAL_MS) return;
-
   lastAdTime = now;
+
   AdInter.show()
-    .then((res) => console.log("Interstitial shown:", res))
+    .then((res) => console.log("Interstitial OK:", res))
     .catch((err) => console.error("Interstitial error:", err));
 }
 
-// Rewarded video
-function showRewardAd() {
+// Rewarded video (Daily TON Chest + diğer reward görevler)
+function showRewardAd(onSuccess) {
   if (!AdReward) {
     alert("Reklam şu anda hazır değil.");
     return;
@@ -113,7 +116,13 @@ function showRewardAd() {
     .then((result) => {
       console.log("Reward ad result:", result);
       if (result && result.done && !result.error) {
-        claimAdRewardFromBackend();
+        // Reklam sonuna kadar izlendi → callback varsa çağır
+        if (typeof onSuccess === "function") {
+          onSuccess();
+        } else {
+          // Default davranış: backend'ten 0.01 TON iste
+          claimAdRewardFromBackend();
+        }
       } else {
         alert("Ödül için reklamı tamamen izlemen gerekiyor.");
       }
@@ -155,16 +164,151 @@ async function claimAdRewardFromBackend() {
 }
 
 // ---------------------------
+// Tap Turbo Boost (front-end only)
+// ---------------------------
+let tapBoostMultiplier = 1;
+let tapBoostExpiresAt = 0; // timestamp (ms)
+const BOOST_DURATION_MS = 5 * 60_000; // 5 dakika
+
+function loadBoostFromStorage() {
+  try {
+    const raw = localStorage.getItem("tap_boost_state");
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    tapBoostMultiplier = obj.multiplier || 1;
+    tapBoostExpiresAt = obj.expiresAt || 0;
+  } catch (e) {
+    console.error("loadBoostFromStorage error:", e);
+  }
+}
+
+function saveBoostToStorage() {
+  try {
+    localStorage.setItem(
+      "tap_boost_state",
+      JSON.stringify({
+        multiplier: tapBoostMultiplier,
+        expiresAt: tapBoostExpiresAt,
+      })
+    );
+  } catch (e) {
+    console.error("saveBoostToStorage error:", e);
+  }
+}
+
+function isBoostActive() {
+  const now = Date.now();
+  return tapBoostMultiplier > 1 && tapBoostExpiresAt > now;
+}
+
+function deactivateBoost() {
+  tapBoostMultiplier = 1;
+  tapBoostExpiresAt = 0;
+  saveBoostToStorage();
+  updateBoostUI();
+}
+
+function activateBoost(multiplier = 2, durationMs = BOOST_DURATION_MS) {
+  const now = Date.now();
+  tapBoostMultiplier = multiplier;
+  tapBoostExpiresAt = now + durationMs;
+  saveBoostToStorage();
+  updateBoostUI();
+  alert(`⚡ ${multiplier}x Tap Boost aktif! ${Math.floor(
+    durationMs / 60000
+  )} dakika boyunca geçerli.`);
+}
+
+function formatBoostRemaining() {
+  if (!isBoostActive()) return "";
+  const diff = tapBoostExpiresAt - Date.now();
+  const totalSec = Math.max(0, Math.floor(diff / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function updateBoostUI() {
+  const boostBadge = document.getElementById("boost-badge");
+  const tapBtn = document.getElementById("tap-btn");
+
+  if (!boostBadge && !tapBtn) return;
+
+  if (isBoostActive()) {
+    const remaining = formatBoostRemaining();
+    if (boostBadge) {
+      boostBadge.classList.remove("hidden");
+      boostBadge.textContent = `⚡ x${tapBoostMultiplier} • ${remaining}`;
+    }
+    if (tapBtn) {
+      tapBtn.textContent =
+        (LANG[currentLang] || LANG.en).tap + ` (x${tapBoostMultiplier})`;
+    }
+  } else {
+    if (boostBadge) {
+      boostBadge.classList.add("hidden");
+      boostBadge.textContent = "";
+    }
+    if (tapBtn) {
+      tapBtn.textContent = (LANG[currentLang] || LANG.en).tap;
+    }
+  }
+}
+
+// Tasks içinden çağrılacak Tap Turbo Boost
+function showBoostAd() {
+  showRewardAd(() => {
+    // Reklam başarıyla izlenince boost aktif et
+    activateBoost(2, BOOST_DURATION_MS);
+  });
+}
+
+// Her saniye kalan süreyi güncelle
+setInterval(() => {
+  if (isBoostActive()) {
+    updateBoostUI();
+  } else if (tapBoostMultiplier > 1) {
+    // Süre bittiyse
+    deactivateBoost();
+  }
+}, 1000);
+
+// ---------------------------
 // Tasks config
 // ---------------------------
+
+/*
+ Task type'ları:
+ - "reward_chest"   : Daily TON Chest (reward video + 0.01 TON, backend kontrol)
+ - "boost"          : Tap Turbo Boost (frontend multiplier, reward video ile açılıyor)
+ - "affiliate"      : Diğer mini-app / bot linkleri (GO / CHECK / CLAIM)
+ - "invite"         : Referral link paylaşma (SHARE FRIENDS)
+*/
+
 const TASKS = [
   {
-    id: "reward_video",
-    type: "reward",
-    iconEmoji: "🎬",
-    title: "Watch a Reward Ad",
-    description: "Watch a full video ad to earn 0.01 TON.",
-    rewardText: "+0.01 TON (max 10/day)",
+    id: "daily_ton_chest",
+    type: "reward_chest",
+    iconEmoji: "🎁",
+    title: "Daily TON Chest",
+    description: "Watch a rewarded ad to earn 0.01 TON. (Max 10/day)",
+    rewardText: "+0.01 TON (up to 10/day)",
+  },
+  {
+    id: "tap_turbo_boost",
+    type: "boost",
+    iconEmoji: "⚡",
+    title: "Tap Turbo Boost",
+    description: "Watch an ad to activate 2x tap power for 5 minutes.",
+    rewardText: "2x Tap Power • 5 min",
+  },
+  {
+    id: "invite_friends",
+    type: "invite",
+    iconEmoji: "👥",
+    title: "Invite Friends",
+    description: "Share your personal referral link with your friends.",
+    rewardText: "More users → more ad revenue",
   },
   {
     id: "affiliate_boinker",
@@ -264,7 +408,6 @@ async function buyCoinsWithTon() {
 // ---------------------------
 function getUpgradeCost() {
   if (!userState || typeof userState.tap_power !== "number") return 100;
-  // tap_power = 1 → 100, 2 → 200, ...
   return userState.tap_power * 100;
 }
 
@@ -299,12 +442,15 @@ function updateLangUI() {
   const tasksSubtitle = document.querySelector(".tasks-subtitle");
   const tasksOpenBtn = document.getElementById("open-tasks-btn");
   const tonCreditsLabel = document.querySelector(
-    "#user-info p:nth-of-type(4) span:first-child"
+    "#user-info p:nth-of-type(4)"
   );
 
   const cost = getUpgradeCost();
 
-  if (tapBtn) tapBtn.textContent = dict.tap;
+  if (tapBtn) {
+    // Boost aktifse boost UI fonksiyonu override edecek
+    tapBtn.textContent = dict.tap;
+  }
   if (upgradeTitle) upgradeTitle.textContent = dict.upgrade_title;
   if (upgradeBtn)
     upgradeBtn.textContent = `${dict.upgrade_btn_prefix}${cost} coins)`;
@@ -314,7 +460,10 @@ function updateLangUI() {
   if (tasksSubtitle) tasksSubtitle.textContent = dict.daily_sub;
   if (tasksOpenBtn) tasksOpenBtn.textContent = dict.tasks_button;
   if (tonCreditsLabel)
-    tonCreditsLabel.textContent = dict.ton_credits_label + ":";
+    tonCreditsLabel.firstChild.textContent = dict.ton_credits_label + ": ";
+
+  // Dil değiştikten sonra boost label'ını da güncelle
+  updateBoostUI();
 }
 
 // ---------------------------
@@ -356,11 +505,18 @@ async function fetchUser() {
 async function tapOnce() {
   if (!userId) return;
 
+  // Boost süresi bittiyse temizle
+  if (!isBoostActive() && tapBoostMultiplier > 1) {
+    deactivateBoost();
+  }
+
+  const effectiveTaps = isBoostActive() ? tapBoostMultiplier : 1;
+
   try {
     const res = await fetch(API_BASE + "/api/tap", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ telegram_id: userId, taps: 1 }),
+      body: JSON.stringify({ telegram_id: userId, taps: effectiveTaps }),
     });
     if (!res.ok) throw new Error("tap failed");
     const data = await res.json();
@@ -369,7 +525,7 @@ async function tapOnce() {
       renderUser();
     }
 
-    tapCounter += 1;
+    tapCounter += effectiveTaps;
     if (tapCounter >= TAPS_PER_AD) {
       tapCounter = 0;
       maybeShowInterstitial();
@@ -449,6 +605,17 @@ async function fetchTaskStatuses() {
   }
 }
 
+function getReferralLink() {
+  if (!userId) return "https://t.me/TaptoEarnTonBot";
+  return `https://t.me/TaptoEarnTonBot?start=ref_${userId}`;
+}
+
+function shareReferral() {
+  const link = getReferralLink();
+  if (tg?.openTelegramLink) tg.openTelegramLink(link);
+  else window.open(link, "_blank");
+}
+
 function renderTasksBoard() {
   const container = document.getElementById("tasks-grid");
   if (!container) return;
@@ -467,52 +634,77 @@ function renderTasksBoard() {
     const main = document.createElement("div");
     main.className = "task-main";
 
-    const title = document.createElement("p");
-    title.className = "task-title";
-    title.textContent = task.title;
+    const titleEl = document.createElement("p");
+    titleEl.className = "task-title";
+    titleEl.textContent = task.title;
 
-    const desc = document.createElement("p");
-    desc.className = "task-desc";
-    desc.textContent = task.description;
+    const descEl = document.createElement("p");
+    descEl.className = "task-desc";
+    descEl.textContent = task.description;
 
-    const reward = document.createElement("p");
-    reward.className = "task-reward";
-    reward.textContent = task.rewardText;
+    const rewardEl = document.createElement("div");
+    rewardEl.className = "task-reward";
+    rewardEl.textContent = task.rewardText;
 
-    main.appendChild(title);
-    main.appendChild(desc);
-    main.appendChild(reward);
+    main.appendChild(titleEl);
+    main.appendChild(descEl);
+    main.appendChild(rewardEl);
 
     const actions = document.createElement("div");
     actions.className = "task-actions";
 
-    if (task.type === "reward") {
+    if (task.type === "reward_chest") {
+      // Daily TON Chest
       const btn = document.createElement("button");
       btn.className = "task-cta-btn";
-      btn.textContent = "WATCH";
-      btn.onclick = () => showRewardAd();
+      btn.textContent = "OPEN CHEST";
+      btn.addEventListener("click", () => {
+        showRewardAd(() => {
+          // Reklam sonuna kadar izlendi → backend ödülü
+          claimAdRewardFromBackend();
+        });
+      });
       actions.appendChild(btn);
-    } else {
+    } else if (task.type === "boost") {
+      // Tap Turbo Boost
+      const btn = document.createElement("button");
+      btn.className = "task-cta-btn";
+      btn.textContent = "ACTIVATE BOOST";
+      btn.addEventListener("click", () => showBoostAd());
+      actions.appendChild(btn);
+    } else if (task.type === "invite") {
+      // Referral
+      const linkPreview = document.createElement("p");
+      linkPreview.className = "task-ref-link";
+      linkPreview.textContent = getReferralLink();
+      main.appendChild(linkPreview);
+
+      const btn = document.createElement("button");
+      btn.className = "task-cta-btn";
+      btn.textContent = "SHARE LINK";
+      btn.addEventListener("click", () => shareReferral());
+      actions.appendChild(btn);
+    } else if (task.type === "affiliate") {
+      // GO / CHECK / CLAIM
       const go = document.createElement("button");
       go.className = "task-cta-btn";
       go.textContent = "GO";
       go.disabled = status === "claimed";
-      go.onclick = () => openAffiliate(task.url);
+      go.addEventListener("click", () => handleTaskClick(task, "go"));
+      actions.appendChild(go);
 
       const check = document.createElement("button");
       check.className = "task-cta-btn";
       check.textContent = "CHECK";
       check.disabled = status === "claimed";
-      check.onclick = () => checkTask(task.id);
+      check.addEventListener("click", () => handleTaskClick(task, "check"));
+      actions.appendChild(check);
 
       const claim = document.createElement("button");
       claim.className = "task-cta-btn";
       claim.textContent = "CLAIM";
       claim.disabled = status !== "checked";
-      claim.onclick = () => claimTask(task.id);
-
-      actions.appendChild(go);
-      actions.appendChild(check);
+      claim.addEventListener("click", () => handleTaskClick(task, "claim"));
       actions.appendChild(claim);
     }
 
@@ -523,6 +715,14 @@ function renderTasksBoard() {
   });
 }
 
+function handleTaskClick(task, action) {
+  if (task.type === "affiliate") {
+    if (action === "go") openAffiliate(task.url);
+    else if (action === "check") checkTask(task.id);
+    else if (action === "claim") claimTask(task.id);
+  }
+}
+
 function openAffiliate(url) {
   if (tg?.openTelegramLink) tg.openTelegramLink(url);
   else window.open(url, "_blank");
@@ -531,105 +731,104 @@ function openAffiliate(url) {
 async function checkTask(taskId) {
   if (!userId) return;
   try {
-    const res
-
-::contentReference[oaicite:0]{index=0}
-
-= await fetch(API_BASE + "/api/tasks/check", {
-method: "POST",
-headers: { "Content-Type": "application/json" },
-body: JSON.stringify({ telegram_id: userId, task_id: taskId }),
-});
-if (!res.ok) throw new Error("checkTask failed");
-const data = await res.json();
-taskStatusMap[taskId] = data.task_status;
-renderTasksBoard();
-alert("Görev kontrol edildi, şimdi CLAIM deneyebilirsin.");
-} catch (err) {
-console.error("checkTask error:", err);
-}
+    const res = await fetch(API_BASE + "/api/tasks/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegram_id: userId, task_id: taskId }),
+    });
+    if (!res.ok) throw new Error("checkTask failed");
+    const data = await res.json();
+    taskStatusMap[taskId] = data.task_status;
+    renderTasksBoard();
+    alert("Görev kontrol edildi, şimdi Claim deneyebilirsin.");
+  } catch (err) {
+    console.error("checkTask error:", err);
+  }
 }
 
 async function claimTask(taskId) {
-if (!userId) return;
-try {
-const res = await fetch(API_BASE + "/api/tasks/claim", {
-method: "POST",
-headers: { "Content-Type": "application/json" },
-body: JSON.stringify({ telegram_id: userId, task_id: taskId }),
-});
-if (!res.ok) {
-const data = await res.json().catch(() => ({}));
-if (data.detail === "TASK_NOT_READY") {
-alert("Önce CHECK yapmalısın.");
-return;
-}
-throw new Error("claimTask failed");
-}
-const data = await res.json();
-taskStatusMap[taskId] = data.task_status;
-if (data.user) {
-userState = data.user;
-renderUser();
-}
-renderTasksBoard();
-alert(`Görev tamamlandı, +${data.reward_coins} coin kazandın!`);
-} catch (err) {
-console.error("claimTask error:", err);
-}
+  if (!userId) return;
+  try {
+    const res = await fetch(API_BASE + "/api/tasks/claim", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegram_id: userId, task_id: taskId }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (data.detail === "TASK_NOT_READY") {
+        alert("Önce CHECK yapmalısın.");
+        return;
+      }
+      throw new Error("claimTask failed");
+    }
+    const data = await res.json();
+    taskStatusMap[taskId] = data.task_status;
+    if (data.user) {
+      userState = data.user;
+      renderUser();
+    }
+    renderTasksBoard();
+    alert(`Görev tamamlandı, +${data.reward_coins} coin kazandın!`);
+  } catch (err) {
+    console.error("claimTask error:", err);
+  }
 }
 
 // ---------------------------
 // Modal helpers
 // ---------------------------
 function openModal(id) {
-const el = document.getElementById(id);
-if (el) el.classList.remove("hidden");
+  const el = document.getElementById(id);
+  if (el) el.classList.remove("hidden");
 }
 
 function closeModal(id) {
-const el = document.getElementById(id);
-if (el) el.classList.add("hidden");
+  const el = document.getElementById(id);
+  if (el) el.classList.add("hidden");
 }
 
 // ---------------------------
 // DOMContentLoaded
 // ---------------------------
 document.addEventListener("DOMContentLoaded", () => {
-if (tg) {
-try {
-tg.expand();
-} catch (e) {
-console.log("Telegram expand error:", e);
-}
-}
+  if (tg) {
+    try {
+      tg.expand();
+    } catch (e) {
+      console.log("Telegram expand error:", e);
+    }
+  }
 
-const tapBtn = document.getElementById("tap-btn");
-const upgradeBtn = document.getElementById("upgrade-tap-power-btn");
-const walletOpenBtn = document.getElementById("wallet-open-btn");
-const openTasksBtn = document.getElementById("open-tasks-btn");
-const tonBuyBtn = document.getElementById("buy-coins-ton-btn");
-const closeButtons = document.querySelectorAll(".overlay-close");
+  loadBoostFromStorage();
 
-if (tapBtn) tapBtn.addEventListener("click", tapOnce);
-if (upgradeBtn) upgradeBtn.addEventListener("click", upgradeTapPower);
-if (walletOpenBtn)
-walletOpenBtn.addEventListener("click", () => openModal("wallet-modal"));
-if (openTasksBtn)
-openTasksBtn.addEventListener("click", () => {
-openModal("tasks-modal");
-renderTasksBoard();
-});
-if (tonBuyBtn) tonBuyBtn.addEventListener("click", buyCoinsWithTon);
+  const tapBtn = document.getElementById("tap-btn");
+  const upgradeBtn = document.getElementById("upgrade-tap-power-btn");
+  const walletOpenBtn = document.getElementById("wallet-open-btn");
+  const openTasksBtn = document.getElementById("open-tasks-btn");
+  const tonBuyBtn = document.getElementById("buy-coins-ton-btn");
+  const closeButtons = document.querySelectorAll(".overlay-close");
 
-closeButtons.forEach((btn) => {
-const target = btn.getAttribute("data-close");
-btn.addEventListener("click", () => closeModal(target));
-});
+  if (tapBtn) tapBtn.addEventListener("click", tapOnce);
+  if (upgradeBtn) upgradeBtn.addEventListener("click", upgradeTapPower);
+  if (walletOpenBtn)
+    walletOpenBtn.addEventListener("click", () => openModal("wallet-modal"));
+  if (openTasksBtn)
+    openTasksBtn.addEventListener("click", () => {
+      openModal("tasks-modal");
+      renderTasksBoard();
+    });
+  if (tonBuyBtn) tonBuyBtn.addEventListener("click", buyCoinsWithTon);
 
-initLanguageSelector();
-updateLangUI();
-initUser();
-initTonConnect();
-initAdsgram();
+  closeButtons.forEach((btn) => {
+    const target = btn.getAttribute("data-close");
+    btn.addEventListener("click", () => closeModal(target));
+  });
+
+  initLanguageSelector();
+  updateLangUI();
+  initUser();
+  initTonConnect();
+  initAdsgram();
+  updateBoostUI();
 });
