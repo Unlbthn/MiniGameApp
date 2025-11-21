@@ -132,9 +132,7 @@ function showRewardAd(forWhat = "chest") {
     })
     .catch((err) => {
       console.error("Reward ad error:", err);
-      alert(
-        "No ad available or an error occurred. Please try again again in a while."
-      );
+      alert("No ad available or an error occurred. Please try again later.");
     });
 }
 
@@ -221,7 +219,7 @@ function activateTurboBoost() {
 // Tasks config (UI)
 // ---------------------------
 const TASKS = [
-  // 1) Daily TON Chest – özel banner + yine listede gösteriyoruz
+  // 1) Daily TON Chest
   {
     id: "daily_ton_chest",
     type: "reward_chest",
@@ -272,17 +270,17 @@ const TASKS = [
     rewardText: "+1000 coins",
     url: "https://t.me/BBQCoin_bot",
   },
-  // 4) Referral – şimdilik sadece link gösteriyoruz (backend “coming soon”)
+  // 4) Referral – metinlerden “soon/beta” vs. kaldırıldı
   {
     id: "referral_invite",
     type: "referral",
     iconType: "referral",
     iconEmoji: "🤝",
     title: "Invite Friends",
-    description: "Share your invite link. Referral rewards will be enabled soon.",
-    rewardText: "Future: coins + TON credits",
+    description: "Share your invite link with your friends.",
+    rewardText: "Referral reward: coins + TON credits",
   },
-  // Mock ekstra görevler (şimdilik görsel doluluk için, ileride gerçek linkler eklenebilir)
+  // Ek görev placeholder’ları – “coming soon” metinleri kaldırıldı
   {
     id: "affiliate_1",
     type: "affiliate",
@@ -290,7 +288,7 @@ const TASKS = [
     iconEmoji: "🎯",
     title: "Check another mini-app",
     description: "Open a partner mini-app and explore it.",
-    rewardText: "Coming soon",
+    rewardText: "Extra partner reward",
     url: "https://t.me",
   },
   {
@@ -300,7 +298,7 @@ const TASKS = [
     iconEmoji: "🎮",
     title: "Try a game partner",
     description: "Play any partner mini-app for a while.",
-    rewardText: "Coming soon",
+    rewardText: "Extra partner reward",
     url: "https://t.me",
   },
   {
@@ -310,7 +308,7 @@ const TASKS = [
     iconEmoji: "💰",
     title: "Visit a rewards bot",
     description: "Open a rewards mini-app and check offers.",
-    rewardText: "Coming soon",
+    rewardText: "Extra partner reward",
     url: "https://t.me",
   },
 ];
@@ -395,7 +393,9 @@ async function buyCoinsWithTon() {
         },
       ],
     });
-    alert("TON payment request sent. After confirmation, coins will be credited soon.");
+    alert(
+      "TON payment request sent. After confirmation, coins will be credited soon."
+    );
   } catch (err) {
     console.error("TON transaction error:", err);
   }
@@ -458,7 +458,6 @@ function updateLangUI() {
   if (tasksOpenBtn) tasksOpenBtn.textContent = dict.tasks_button;
   if (tonCreditsLabel) tonCreditsLabel.textContent = dict.ton_credits_label;
   if (boostIndicator) {
-    // aktif / pasif turboya göre metin güncellensin
     updateTurboIndicator();
   }
 }
@@ -686,9 +685,9 @@ function openReferralInfo() {
     baseLink += "?start=" + encodeURIComponent("ref_" + userId);
   }
   alert(
-    "Invite link (future feature):\n\n" +
+    "Invite link:\n\n" +
       baseLink +
-      "\n\nReferral tracking & rewards will be enabled soon."
+      "\n\nReferral tracking & rewards will be enabled later."
   );
 }
 
