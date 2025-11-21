@@ -573,7 +573,7 @@ userState = data.user;
 renderUser();
 }
 renderTasksBoard();
-alert(Görev tamamlandı, +${data.reward_coins} coin kazandın!);
+alert(`Görev tamamlandı, +${data.reward_coins} coin kazandın!`);
 } catch (err) {
 console.error("claimTask error:", err);
 }
