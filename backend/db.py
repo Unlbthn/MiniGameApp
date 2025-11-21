@@ -1,27 +1,17 @@
-from sqlalchemy import create_engine, Column, Integer, BigInteger
-from sqlalchemy.orm import declarative_base, sessionmaker
+# backend/db.py
+import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
 
-# SQLite veritabanı dosyası (proje köküne tapgame.db oluşturur)
-DATABASE_URL = "sqlite:///../tapgame.db"
+# Railway'de DATABASE_URL varsa onu kullan, yoksa local sqlite
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./taptoearnton.db")
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False}
-)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+connect_args = {}
+if DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 Base = declarative_base()
-
-
-class User(Base):
-    __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True, index=True)
-    telegram_id = Column(BigInteger, unique=True, index=True)
-    coins = Column(Integer, default=0)
-    total_coins = Column(Integer, default=0)
-    level = Column(Integer, default=1)
-    tap_power = Column(Integer, default=1)
-
-
-def init_db():
-    Base.metadata.create_all(bind=engine)

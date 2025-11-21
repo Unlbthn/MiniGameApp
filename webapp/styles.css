@@ -1,210 +1,301 @@
+:root {
+  --bg: #050915;
+  --card-bg: #0c1224;
+  --accent: #0ea5e9;
+  --accent-soft: rgba(14, 165, 233, 0.15);
+  --text: #f9fafb;
+  --text-soft: #9ca3af;
+  --danger: #f97373;
+  --border: #1f2937;
+  --task-bg: #0f172a;
+}
+
 * {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at top, #0b1730 0, #020617 55%, #000 100%);
+  color: var(--text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  touch-action: pan-x pan-y;
 }
 
 body {
-  margin: 0;
-  padding: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
-  background: radial-gradient(circle at top, #0f172a 0, #020617 45%, #000 100%);
-  color: #e5e7eb;
   display: flex;
-  justify-content: center;
   align-items: center;
-  min-height: 100vh;
+  justify-content: center;
 }
 
-.container {
+.app-root {
   width: 100%;
-  max-width: 480px;
-  padding: 16px;
+  max-width: 420px;
+  padding: 12px;
 }
 
-/* Ana kart */
-
-.game-card {
-  position: relative;
-  background: rgba(15, 23, 42, 0.98);
-  border-radius: 20px;
-  padding: 18px 16px 16px 16px;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(148, 163, 184, 0.25);
-}
-
-/* Top bar: sol wallet icon, sağ dil seçici */
+/* TOP BAR */
 
 .top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 12px;
+}
+
+.left-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .icon-btn {
-  border: none;
-  background: rgba(30, 41, 59, 0.9);
-  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 10px;
-  font-size: 16px;
-  cursor: pointer;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.85);
+  color: var(--text);
+  font-size: 12px;
 }
 
-/* Dil seçici chips */
+.icon-btn:active {
+  transform: scale(0.98);
+}
 
-.lang-toggle {
+.icon-circle {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.icon-label {
+  font-weight: 500;
+}
+
+/* Dil seçici */
+
+.lang-chips {
   display: flex;
   gap: 6px;
 }
 
 .lang-chip {
+  padding: 4px 8px;
   border-radius: 999px;
-  padding: 4px 10px;
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.8);
   font-size: 11px;
-  border: 1px solid rgba(148, 163, 184, 0.5);
-  background: rgba(15, 23, 42, 0.9);
-  color: #e5e7eb;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   cursor: pointer;
+  opacity: 0.7;
 }
 
 .lang-chip.active {
-  background: linear-gradient(135deg, #0ea5e9, #22d3ee);
-  color: #020617;
-  border-color: transparent;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  opacity: 1;
 }
 
-h1 {
-  margin: 0 0 10px 0;
-  font-size: 22px;
+.lang-chip span {
+  line-height: 1;
+}
+
+/* TON balance */
+
+.ton-balance-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid var(--border);
+}
+
+.ton-logo-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, #e0f2fe, #0ea5e9 60%, #0369a1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
   font-weight: 700;
-  color: #e5f2ff;
-  text-align: center;
+  color: #0b1120;
 }
 
-/* Kullanıcı info */
-
-#user-info {
-  margin-bottom: 10px;
-  text-align: center;
+.ton-balance-text {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
 }
 
-#user-info p {
-  margin: 2px 0;
-  font-size: 13px;
-  color: #cbd5f5;
+.ton-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-soft);
 }
 
-#user-info span {
+.ton-value {
   font-weight: 600;
-  color: #e0f2fe;
 }
 
-/* TAP butonu */
+/* CARD */
 
-.tap-wrapper {
-  margin: 14px 0;
+.card {
+  background: radial-gradient(circle at top, #111827 0, #020617 80%);
+  border-radius: 24px;
+  padding: 16px 16px 18px;
+  border: 1px solid rgba(15, 23, 42, 0.9);
+  box-shadow: 0 18px 60px rgba(15, 23, 42, 0.9);
+}
+
+.game-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.user-info {
+  font-size: 13px;
+  color: var(--text-soft);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+/* TAP */
+
+.tap-area {
   display: flex;
   justify-content: center;
+  margin-bottom: 16px;
 }
 
-#tap-btn {
-  width: 210px;
-  height: 210px;
+.tap-btn {
+  width: 190px;
+  height: 190px;
   border-radius: 999px;
   border: none;
-  cursor: pointer;
-  background: radial-gradient(circle at 30% 20%, #35c1f1 0, #0098ea 40%, #045d9b 100%);
-  color: #e5f2ff;
+  background: radial-gradient(circle at 30% 20%, #e0f2fe, #38bdf8 45%, #0ea5e9);
+  box-shadow: 0 0 30px rgba(56, 189, 248, 0.6),
+    0 18px 45px rgba(15, 23, 42, 0.9);
+  color: #0b1120;
   font-size: 26px;
-  font-weight: 900;
-  box-shadow: 0 18px 36px rgba(0, 152, 234, 0.7);
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: transform 0.06s ease-out, box-shadow 0.06s ease-out;
 }
 
-#tap-btn:active {
-  transform: scale(0.94);
-  box-shadow: 0 12px 24px rgba(0, 152, 234, 0.95);
+.tap-btn:active {
+  transform: scale(0.95) translateY(2px);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3),
+    0 10px 25px rgba(15, 23, 42, 0.9);
 }
 
-/* Upgrade alanı */
+/* Buttons */
 
-.upgrade-section {
-  margin-top: 6px;
-  padding-top: 8px;
-  border-top: 1px dashed rgba(75, 85, 99, 0.7);
+.primary-btn,
+.secondary-btn {
+  width: 100%;
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, #0ea5e9, #2563eb);
+  color: white;
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.6);
+}
+
+.primary-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.6);
+}
+
+.secondary-btn {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.secondary-btn:active {
+  transform: translateY(1px);
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.full-width {
+  width: 100%;
+}
+
+/* Sections */
+
+.divider {
+  border: none;
+  border-top: 1px solid rgba(31, 41, 55, 0.9);
+  margin: 16px 0 14px;
 }
 
 .upgrade-section h2 {
-  margin: 0 0 6px 0;
   font-size: 15px;
-  color: #38bdf8;
-  text-align: left;
+  margin-bottom: 8px;
 }
 
-#upgrade-tap-power-btn {
-  width: 100%;
-  padding: 9px 14px;
-  border-radius: 999px;
-  border: 1px solid #0ea5e9;
-  background: linear-gradient(135deg, #020617, #020b16);
-  color: #e0f2fe;
-  cursor: pointer;
-  font-size: 13px;
+.tasks-entry {
+  margin-top: 12px;
 }
 
-#upgrade-tap-power-btn:active {
-  transform: scale(0.97);
-}
-
-/* Daily Tasks açma butonu */
-
-.tasks-open-section {
-  margin-top: 10px;
-}
-
-.tasks-open-btn {
-  width: 100%;
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.6);
-  background: rgba(15, 23, 42, 0.95);
-  color: #e5f2ff;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.tasks-open-btn:active {
-  transform: scale(0.97);
-}
-
-/* Overlay modallar (wallet & tasks) */
+/* Overlays */
 
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(15, 23, 42, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  z-index: 40;
 }
 
-.hidden {
+.overlay.hidden {
   display: none;
 }
 
-.overlay-card {
+.overlay-content {
   width: 100%;
   max-width: 420px;
-  margin: 0 16px;
+  margin: 0 12px;
   background: rgba(15, 23, 42, 0.98);
   border-radius: 18px;
-  padding: 14px 14px 16px 14px;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  box-shadow: 0 20px 45px rgba(15, 23, 42, 1);
+  border: 1px solid rgba(31, 41, 55, 0.9);
+  padding: 14px 14px 16px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.8);
 }
-
-/* Overlay header */
 
 .overlay-header {
   display: flex;
@@ -213,151 +304,136 @@ h1 {
   margin-bottom: 8px;
 }
 
+.overlay-header h2 {
+  font-size: 16px;
+}
+
 .overlay-close {
   border: none;
-  background: rgba(30, 41, 59, 0.9);
-  border-radius: 999px;
-  width: 26px;
-  height: 26px;
-  font-size: 14px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 16px;
   cursor: pointer;
-  color: #e5e7eb;
 }
 
 /* Wallet modal */
 
-.wallet-title {
-  font-size: 16px;
-  color: #e5f2ff;
-  margin: 0;
+.wallet-subtitle {
+  font-size: 13px;
+  color: var(--text-soft);
+  margin-bottom: 12px;
 }
 
-#wallet-address {
-  margin-top: 6px;
+.ton-connect-container {
+  margin-bottom: 10px;
+}
+
+.wallet-address {
   font-size: 11px;
-  color: #a5b4fc;
+  color: var(--text-soft);
   word-break: break-all;
+  margin-bottom: 10px;
 }
 
-.wallet-buy-btn {
-  margin-top: 10px;
-  padding: 7px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(56, 189, 248, 0.7);
-  background: rgba(15, 23, 42, 0.98);
-  color: #e0f2fe;
-  font-size: 12px;
-  cursor: pointer;
-}
+/* Tasks modal - Boinker style */
 
-.wallet-buy-btn:active {
-  transform: scale(0.97);
-}
-
-/* Tasks modal */
-
-.tasks-title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #e5f2ff;
+.tasks-overlay {
+  max-height: 80vh;
+  overflow: hidden;
 }
 
 .tasks-subtitle {
-  margin: 2px 0 8px 0;
-  font-size: 11px;
-  color: #94a3b8;
+  font-size: 13px;
+  color: var(--text-soft);
+  margin-bottom: 10px;
 }
 
 .tasks-list {
+  max-height: 65vh;
+  overflow-y: auto;
+  padding-right: 4px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-/* Görev kartları */
+/* Task row */
 
-.task-card {
+.task-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 11px;
+  padding: 10px;
   border-radius: 14px;
-  background: rgba(15, 23, 42, 0.98);
-  border: 1px solid rgba(51, 65, 85, 0.9);
+  background: var(--task-bg);
+  border: 1px solid rgba(31, 41, 55, 0.9);
+  gap: 10px;
+}
+
+.task-left {
+  flex: 0 0 auto;
 }
 
 .task-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-}
-
-.task-icon.reward {
-  background: radial-gradient(circle at 30% 20%, #22c55e 0, #16a34a 40%, #14532d 100%);
-}
-
-.task-icon.task {
-  background: radial-gradient(circle at 30% 20%, #38bdf8 0, #0ea5e9 40%, #0369a1 100%);
-}
-
-.task-icon.affiliate {
-  background: radial-gradient(circle at 30% 20%, #a855f7 0, #7c3aed 40%, #4c1d95 100%);
+  background: rgba(15, 23, 42, 0.9);
+  font-size: 18px;
 }
 
 .task-main {
-  flex: 1;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .task-title {
-  margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: #e5f2ff;
 }
 
 .task-desc {
-  margin: 2px 0 0 0;
   font-size: 11px;
-  color: #9ca3af;
+  color: var(--text-soft);
 }
 
 .task-reward {
   font-size: 11px;
-  color: #facc15;
-  font-weight: 600;
-  margin-top: 4px;
+  color: #22c55e;
+}
+
+.task-actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .task-cta-btn {
-  padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.6);
-  background: rgba(15, 23, 42, 0.9);
-  color: #e5f2ff;
+  border: none;
+  padding: 4px 10px;
   font-size: 11px;
+  font-weight: 600;
   cursor: pointer;
+  background: #0ea5e9;
+  color: white;
   white-space: nowrap;
 }
 
-.task-cta-btn:active {
-  transform: scale(0.97);
+.task-cta-btn:nth-child(2) {
+  background: #6366f1;
 }
 
-/* Genel button reset */
-
-button {
-  font-family: inherit;
+.task-cta-btn:nth-child(3) {
+  background: #22c55e;
 }
 
-@media (max-width: 480px) {
-  #tap-btn {
-    width: 180px;
-    height: 180px;
-    font-size: 22px;
-  }
+.task-cta-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }

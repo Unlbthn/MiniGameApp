@@ -15,8 +15,8 @@ import logging
 # AYARLAR
 # -----------------------------
 
-BOT_TOKEN = "8419572595:AAEMQSSTS_W2PfTpC12j24oBbbdaIt5WRbk"  # senin token'in
-WEBAPP_URL = "https://minigameapp-production.up.railway.app"
+BOT_TOKEN = "8557376518:AAHywS4gMXo8CH1HreUTX2mi1WGyhX4oiP8"
+WEBAPP_URL = "https://taptoearnton-production.up.railway.app"
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
