@@ -5,268 +5,144 @@
     <title>Tap to Earn TON</title>
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no"
     />
 
-    <link rel="stylesheet" href="/static/styles.css" />
-
-    <!-- Telegram WebApp -->
+    <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- TonConnect UI -->
-    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
-    <!-- AdsGram -->
+
+    <!-- AdsGram SDK -->
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 
-<script defer src="/static/app.js"></script>
+    <!-- TonConnect UI -->
+    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+
+    <!-- App CSS -->
+    <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
     <div id="app">
-      <!-- TOP BAR -->
-      <header class="top-bar">
-        <div class="logo-area">
-          <div class="logo-circle">T</div>
-          <div class="logo-text">
-            <div class="logo-title">Tap to Earn TON</div>
-            <div class="logo-subtitle">Tap · Tasks · TON</div>
-          </div>
+      <!-- HEADER -->
+      <header class="app-header">
+        <div class="app-title">
+          <span class="logo-dot"></span>
+          <span>Tap to Earn TON</span>
         </div>
 
-        <div class="top-right">
-          <!-- Wallet icon -->
-          <button id="wallet-open-btn" class="icon-btn" type="button" title="TON Wallet">
+        <div class="header-right">
+          <!-- TON BALANCE -->
+          <div class="ton-balance-pill">
+            <img
+              src="https://cryptologos.cc/logos/toncoin-ton-logo.png"
+              alt="TON"
+            />
+            <span class="ton-label">TON</span>
+            <span class="ton-value" id="ton_credits">0.00</span>
+          </div>
+
+          <!-- WALLET BUTTON -->
+          <button id="wallet-open-btn" class="icon-btn" aria-label="Wallet">
             💼
           </button>
-
-          <!-- TON balance -->
-          <div class="ton-balance">
-            <span class="ton-badge">TON</span>
-            <span id="ton-balance-value">0.00</span>
-          </div>
-
-          <!-- Language selector -->
-          <div class="lang-switcher">
-            <button
-              class="lang-chip"
-              type="button"
-              data-lang="en"
-              title="English"
-            >
-              🇬🇧
-            </button>
-            <button
-              class="lang-chip"
-              type="button"
-              data-lang="tr"
-              title="Türkçe"
-            >
-              🇹🇷
-            </button>
-          </div>
         </div>
       </header>
 
       <!-- MAIN CONTENT -->
-      <main class="main-layout">
-        <!-- LEFT: TAP CARD -->
-        <section class="card main-card">
-          <div class="user-info-row">
-            <div class="user-stat">
-              <span class="label">Level</span>
-              <span class="value" id="level">1</span>
-            </div>
-            <div class="user-stat">
-              <span class="label">Coins</span>
-              <span class="value" id="coins">0</span>
-            </div>
-            <div class="user-stat">
-              <span class="label">Tap Power</span>
-              <span class="value" id="tap_power">1</span>
-            </div>
-            <div class="user-stat">
-              <span class="label" id="ton-credits-label">TON Credits</span>
-              <span class="value" id="ton_credits">0.00</span>
-            </div>
+      <main class="app-main">
+        <!-- LEVEL & STATS -->
+        <section class="stats-section">
+          <div class="stat-item">
+            <span class="stat-label">Level</span>
+            <span class="stat-value" id="level">1</span>
           </div>
-
-          <div id="boost-indicator" class="boost-indicator">
-            No turbo boost active
+          <div class="stat-item">
+            <span class="stat-label">Coins</span>
+            <span class="stat-value" id="coins">0</span>
           </div>
-
-          <div class="tap-area">
-            <button id="tap-btn" class="tap-circle" type="button">
-              TAP
-            </button>
+          <div class="stat-item">
+            <span class="stat-label">Tap Power</span>
+            <span class="stat-value" id="tap_power">1</span>
           </div>
-
-          <p class="hint-text">
-            Tap to earn coins. Upgrade your tap power and combine it with turbo
-            boost for maximum profit.
-          </p>
         </section>
 
-        <!-- RIGHT: UPGRADE + CTA -->
-        <section class="right-column">
-          <section class="card upgrade-section">
-            <h2 id="upgrade-title">Upgrade</h2>
-            <p id="upgrade-desc">
-              Spend your coins to increase tap power and earn more with each
-              tap.
-            </p>
+        <!-- TAP BUTTON -->
+        <section class="tap-section">
+          <button id="tap-btn" class="tap-button">
+            TAP
+          </button>
+        </section>
 
-            <button id="upgrade-tap-power-btn" class="primary-btn" type="button">
-              Increase Tap Power (cost: 100 coins)
-            </button>
+        <!-- ACTION BUTTONS -->
+        <section class="action-buttons">
+          <button id="upgrade-tap-power-btn" class="primary-btn">
+            Increase Tap Power (cost: 100 coins)
+          </button>
 
-            <button id="open-tasks-btn" class="secondary-btn" type="button">
-              📝 Daily Tasks & Offers
-            </button>
-          </section>
-
-          <section class="card wallet-section">
-            <div class="wallet-header">
-              <h2 class="wallet-title">TON Wallet</h2>
-              <span class="wallet-tag">beta</span>
-            </div>
-            <p class="wallet-desc">
-              Connect your TON wallet, see your on-chain balance and use TON to
-              buy in-game credits (coming soon).
-            </p>
-
-            <div id="ton-connect-button" class="ton-connect-container"></div>
-
-            <p id="wallet-address" class="wallet-address"></p>
-
-            <button id="buy-coins-ton-btn" class="secondary-btn" type="button">
-              💎 Buy coins with TON (soon)
-            </button>
-          </section>
+          <button id="open-tasks-btn" class="secondary-btn">
+            🗓️ Daily Tasks
+          </button>
         </section>
       </main>
 
-      <!-- BOTTOM BAR: CTA SHORTCUTS -->
-      <section class="bottom-cta-row">
-        <button id="open-tasks-shortcut" class="bottom-cta-btn" type="button">
-          🧩 Tasks
-        </button>
-        <button id="open-daily-chest-shortcut" class="bottom-cta-btn" type="button">
-          🎁 Daily TON Chest
-        </button>
-        <button id="open-referral-shortcut" class="bottom-cta-btn" type="button">
-          🤝 Invite Friends
-        </button>
-      </section>
+      <!-- LANGUAGE & FOOTER -->
+      <footer class="app-footer">
+        <div class="lang-switcher">
+          <button class="lang-chip" data-lang="en">🇬🇧 EN</button>
+          <button class="lang-chip" data-lang="tr">🇹🇷 TR</button>
+        </div>
+      </footer>
     </div>
 
     <!-- WALLET MODAL -->
     <div id="wallet-modal" class="overlay hidden">
-      <div class="overlay-backdrop" data-close="wallet-modal"></div>
-      <div class="overlay-content wallet-modal-content">
+      <div class="overlay-backdrop"></div>
+      <div class="overlay-content">
         <div class="overlay-header">
           <h2>TON Wallet</h2>
-          <button
-            class="overlay-close"
-            type="button"
-            data-close="wallet-modal"
-          >
-            ✕
+          <button class="overlay-close" data-close="wallet-modal">✕</button>
+        </div>
+        <div class="overlay-body">
+          <p class="overlay-desc">
+            Connect your TON wallet and manage your on-chain rewards.
+          </p>
+
+          <div id="ton-connect-button" class="ton-connect-container"></div>
+
+          <p id="wallet-address" class="wallet-address"></p>
+
+          <button id="buy-coins-ton-btn" class="primary-btn full-width">
+            Buy coins with TON (beta)
           </button>
         </div>
-        <p>
-          Connect your TON wallet using the TonConnect button below. After
-          connection you'll see your wallet address and can use TON in future
-          updates.
-        </p>
-
-        <div id="ton-connect-button-modal" class="ton-connect-container"></div>
-        <p id="wallet-address-modal" class="wallet-address"></p>
       </div>
     </div>
 
     <!-- TASKS MODAL -->
     <div id="tasks-modal" class="overlay hidden">
-      <div class="overlay-backdrop" data-close="tasks-modal"></div>
-      <div class="overlay-content tasks-modal-content">
+      <div class="overlay-backdrop"></div>
+      <div class="overlay-content tasks-overlay">
         <div class="overlay-header">
-          <h2 class="tasks-title">Daily Tasks & Offers</h2>
-          <button
-            class="overlay-close"
-            type="button"
-            data-close="tasks-modal"
-          >
-            ✕
-          </button>
-        </div>
-
-        <p class="tasks-subtitle">
-          Watch rewarded ads, activate turbo, complete affiliate tasks and
-          invite friends to earn more.
-        </p>
-
-        <!-- Highlighted Daily TON Chest -->
-        <div class="chest-banner">
-          <div class="chest-icon">🎁</div>
-          <div class="chest-text">
-            <div class="chest-title">Daily TON Chest</div>
-            <div class="chest-sub">
-              Watch a short ad to earn <strong>0.01 TON</strong>. Up to
-              <strong>10 chests per day</strong>.
-            </div>
+          <div class="overlay-header-left">
+            <h2>Daily Tasks</h2>
+            <span class="overlay-subtitle">Complete tasks, earn more.</span>
           </div>
-          <button id="open-daily-chest-btn" class="primary-btn chest-btn" type="button">
-            Open
-          </button>
+          <button class="overlay-close" data-close="tasks-modal">✕</button>
         </div>
 
-        <!-- TASK LIST -->
-        <div id="tasks-list" class="tasks-list"></div>
+        <div class="tasks-info-row">
+          <div class="tasks-info-pill">
+            <span class="info-icon">!</span>
+            <span class="info-text">Watch ads or join other games to earn.</span>
+          </div>
+        </div>
 
-        <button
-          class="primary-btn close-tasks-btn"
-          data-close="tasks-modal"
-          type="button"
-        >
-          Close
-        </button>
+        <div id="tasks-list" class="tasks-list">
+          <!-- JS ile doldurulacak -->
+        </div>
       </div>
     </div>
 
-    <!-- REFERRAL MODAL -->
-    <div id="referral-modal" class="overlay hidden">
-      <div class="overlay-backdrop" data-close="referral-modal"></div>
-      <div class="overlay-content referral-modal-content">
-        <div class="overlay-header">
-          <h2>Invite Friends</h2>
-          <button
-            class="overlay-close"
-            type="button"
-            data-close="referral-modal"
-          >
-            ✕
-          </button>
-        </div>
-
-        <p>
-          Share your personal invite link. For every active friend you can get
-          extra coins and TON credits (referral rewards will be enabled soon).
-        </p>
-
-        <div class="ref-link-box">
-          <input
-            id="referral-link-input"
-            type="text"
-            readonly
-            value="https://t.me/TaptoEarnTonBot"
-          />
-          <button id="copy-referral-link-btn" class="secondary-btn" type="button">
-            Copy
-          </button>
-        </div>
-
-        <p class="ref-hint">
-          Tip: Share it in groups, crypto communities and with your friends to
-          maximize your earnings.
-        </p>
-      </div>
-    </div>
+    <!-- App JS -->
+    <script defer src="/static/app.js"></script>
   </body>
 </html>
