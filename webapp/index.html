@@ -8,7 +8,8 @@
       content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
     />
 
-    <link rel="stylesheet" href="styles.css" />
+    <!-- DİKKAT: /static altından çağırıyoruz -->
+    <link rel="stylesheet" href="/static/styles.css" />
 
     <!-- Telegram WebApp -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -17,7 +18,8 @@
     <!-- AdsGram -->
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 
-    <script defer src="app.js"></script>
+    <!-- DİKKAT: /static altından çağırıyoruz -->
+    <script defer src="/static/app.js"></script>
   </head>
   <body>
     <div class="app-wrapper">
@@ -114,7 +116,7 @@
       </div>
     </div>
 
-    <!-- TASKS MODAL (Boinker style) -->
+    <!-- TASKS MODAL -->
     <div id="tasks-modal" class="modal hidden">
       <div class="modal-backdrop"></div>
       <div class="modal-card tasks-card">
