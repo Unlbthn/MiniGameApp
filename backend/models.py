@@ -1,40 +1,42 @@
-# backend/models.py
-from datetime import date, datetime
-from sqlalchemy import Column, Integer, BigInteger, Float, String, Date, DateTime, UniqueConstraint
-from .db import Base   # <<< BURASI ÖNEMLİ
+from sqlalchemy import Column, Integer, Float, String, Boolean, Date, DateTime
+from sqlalchemy.orm import declarative_base
+from datetime import datetime
+
+Base = declarative_base()
+
 
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    telegram_id = Column(BigInteger, index=True, unique=True)
+    telegram_id = Column(Integer, primary_key=True, index=True)
 
+    # Game stats
     coins = Column(Integer, default=0)
     total_coins = Column(Integer, default=0)
     level = Column(Integer, default=1)
     tap_power = Column(Integer, default=1)
 
+    # TON earnings
     ton_credits = Column(Float, default=0.0)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Turbo boost
+    turbo_end = Column(DateTime, nullable=True)
+    daily_turbo_count = Column(Integer, default=0)
+    last_turbo_date = Column(Date, nullable=True)
+
+    # Reward ads
+    daily_ads_count = Column(Integer, default=0)
+    last_ad_date = Column(Date, nullable=True)
+
+    # Referral system
+    referrals = Column(Integer, default=0)
+    referred_by = Column(Integer, nullable=True)
 
 
 class TaskStatus(Base):
-    __tablename__ = "task_statuses"
+    __tablename__ = "task_status"
 
     id = Column(Integer, primary_key=True, index=True)
-    telegram_id = Column(BigInteger, index=True)
-    task_id = Column(String, index=True)
-    status = Column(String, default="pending")  # pending | checked | claimed
-
-    __table_args__ = (UniqueConstraint("telegram_id", "task_id", name="uq_user_task"),)
-
-
-class AdReward(Base):
-    __tablename__ = "ad_rewards"
-
-    id = Column(Integer, primary_key=True, index=True)
-    telegram_id = Column(BigInteger, index=True)
-    reward_date = Column(Date, index=True)
-    count = Column(Integer, default=0)
+    telegram_id = Column(Integer, index=True)
+    task_id = Column(String)
+    status = Column(String)  # pending / checked / claimed
