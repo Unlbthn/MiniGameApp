@@ -76,7 +76,8 @@ async function initUser() {
   if (tg?.initDataUnsafe?.user?.id) {
     userId = tg.initDataUnsafe.user.id;
   } else {
-    userId = localStorage.getItem("tap_user_id") || Math.floor(Math.random() * 1e9);
+    userId =
+      localStorage.getItem("tap_user_id") || Math.floor(Math.random() * 1e9);
     localStorage.setItem("tap_user_id", userId);
   }
 
@@ -100,7 +101,8 @@ function renderUser() {
   document.getElementById("level").textContent = userState.level;
   document.getElementById("coins").textContent = userState.coins;
   document.getElementById("tap_power").textContent = userState.tap_power;
-  document.getElementById("ton_credits").textContent = userState.ton_credits.toFixed(2);
+  document.getElementById("ton_credits").textContent =
+    userState.ton_credits.toFixed(2);
 
   // Update TON pill
   const pill = document.getElementById("ton-pill-value");
@@ -222,9 +224,12 @@ function showRewardAd() {
       return;
     }
 
-    const res = await fetch(`${API_BASE}/api/reward/ad?telegram_id=${userId}`, {
-      method: "POST",
-    });
+    const res = await fetch(
+      `${API_BASE}/api/reward/ad?telegram_id=${userId}`,
+      {
+        method: "POST",
+      }
+    );
 
     const data = await res.json();
     userState = data.user;
@@ -278,7 +283,9 @@ const TASKS = [
 
 // Fetch tasks
 async function fetchTaskStatuses() {
-  const res = await fetch(`${API_BASE}/api/tasks/status?telegram_id=${userId}`);
+  const res = await fetch(
+    `${API_BASE}/api/tasks/status?telegram_id=${userId}`
+  );
   const data = await res.json();
   data.forEach((s) => (taskStatusMap[s.task_id] = s.status));
   renderTasksBoard();
@@ -456,7 +463,9 @@ function initLanguageSelector() {
     chip.onclick = () => {
       currentLang = chip.dataset.lang;
       localStorage.setItem("tap_lang", currentLang);
-      chips.forEach((c) => c.classList.toggle("active", c.dataset.lang === currentLang));
+      chips.forEach((c) =>
+        c.classList.toggle("active", c.dataset.lang === currentLang)
+      );
       updateLangUI();
     };
   });
@@ -465,7 +474,8 @@ function initLanguageSelector() {
 function updateLangUI() {
   const dict = LANG[currentLang];
   document.getElementById("tap-btn").textContent = dict.tap;
-  document.querySelector(".upgrade-section h2").textContent = dict.upgrade_title;
+  document.querySelector(".upgrade-section h2").textContent =
+    dict.upgrade_title;
 
   const cost = userState.tap_power * 100;
   document.getElementById("upgrade-tap-power-btn").textContent =
@@ -475,4 +485,3 @@ function updateLangUI() {
   document.querySelector(".tasks-subtitle").textContent = dict.daily_sub;
   document.getElementById("open-tasks-btn").textContent = dict.tasks_button;
 }
-
