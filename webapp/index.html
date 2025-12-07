@@ -1,137 +1,100 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Tap to Earn TON</title>
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-
-  <link rel="stylesheet" href="/static/styles.css" />
-
-  <!-- Telegram WebApp -->
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <!-- AdsGram -->
-  <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
-  <!-- TonConnect UI -->
-  <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tap to Earn TON</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://unpkg.com/@tonconnect/ui@2.0.0/dist/tonconnect-ui.min.js"></script>
+    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 </head>
+
 <body>
-  <div class="app-root">
+
     <!-- TOP BAR -->
-    <header class="top-bar">
-      <div class="top-left">
-        <button id="wallet-open-btn" class="icon-button" aria-label="TON Wallet">
-          💼
-        </button>
-        <div class="ton-balance-pill">
-          <span class="ton-logo">TON</span>
-          <span id="ton-balance-text">0.00</span>
+    <div class="top-bar">
+        <div id="wallet-open-btn" class="wallet-icon">💳</div>
+        <div class="ton-pill">
+            <img src="https://cryptologos.cc/logos/toncoin-ton-logo.png" class="ton-logo">
+            <span id="ton-pill-balance">0.00</span>
         </div>
-      </div>
-      <div class="top-right">
-        <div class="lang-toggle">
-          <button class="lang-chip" data-lang="en">EN</button>
-          <button class="lang-chip" data-lang="tr">TR</button>
+        <div class="lang-switch">
+            <span class="lang-chip" data-lang="en">🇬🇧</span>
+            <span class="lang-chip" data-lang="tr">🇹🇷</span>
         </div>
-      </div>
-    </header>
+    </div>
 
-    <!-- MAIN LAYOUT -->
-    <main class="layout">
-      <section class="main-column">
-        <!-- STATS -->
-        <div class="stats-card">
-          <div class="stat-row">
-            <span id="label-level">Level</span>
-            <span id="level">1</span>
-          </div>
-          <div class="stat-row">
-            <span id="label-coins">Coins</span>
-            <span id="coins">0</span>
-          </div>
-          <div class="stat-row">
-            <span id="label-tap-power">Tap Power</span>
-            <span id="tap_power">1</span>
-          </div>
-          <div class="stat-row">
-            <span id="label-ton-credits">TON Credits</span>
-            <span id="ton_credits">0.00</span>
-          </div>
+    <!-- USER PANEL -->
+    <div id="user-info" class="user-panel">
+        <p>Level <span id="level">1</span></p>
+        <div class="level-bar">
+            <div id="level-bar-fill"></div>
         </div>
 
-        <!-- TAP BUTTON -->
-        <button id="tap-btn" class="tap-button">
-          TAP
-        </button>
+        <p>Coins: <span id="coins">0</span></p>
+        <p>Tap Power: <span id="tap_power">1</span></p>
+        <p>TON Credits: <span id="ton_credits">0</span></p>
+    </div>
 
-        <!-- UPGRADE & TURBO -->
-        <section class="upgrade-section">
-          <h2 id="upgrade-title">Upgrade</h2>
-          <button id="upgrade-tap-power-btn" class="primary-btn">
-            Increase Tap Power (cost: 100 coins)
-          </button>
+    <!-- TAP BUTTON -->
+    <button id="tap-btn" class="tap-btn">TAP</button>
 
-          <div class="turbo-row">
-            <button id="turbo-btn" class="secondary-btn">
-              Activate Turbo x2 (5 min)
-            </button>
-            <span id="turbo-status" class="turbo-status">
-              Turbo: inactive
-            </span>
-          </div>
-        </section>
+    <!-- UPGRADE -->
+    <div class="upgrade-section">
+        <h2>Upgrade</h2>
+        <button id="upgrade-tap-power-btn" class="upgrade-btn">Upgrade</button>
+    </div>
 
-        <!-- ACTIONS -->
-        <section class="actions-row">
-          <button id="open-tasks-btn" class="ghost-btn">
-            📝 Daily Tasks
-          </button>
-        </section>
-      </section>
-    </main>
+    <!-- DAILY CHEST + TASKS -->
+    <div class="menu-buttons">
+        <button id="daily-chest-btn" class="menu-btn">Daily TON Chest</button>
+        <button id="open-tasks-btn" class="menu-btn">Daily Tasks</button>
+        <button id="invite-btn" class="menu-btn">Invite Friends</button>
+    </div>
 
     <!-- WALLET MODAL -->
-    <div id="wallet-modal" class="modal hidden">
-      <div class="modal-backdrop" data-close="wallet-modal"></div>
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2 id="wallet-title">TON Wallet</h2>
-          <button class="close-btn" data-close="wallet-modal">✕</button>
+    <div id="wallet-modal" class="overlay hidden">
+        <div class="overlay-content">
+            <div class="overlay-header">
+                <h2 class="wallet-title">TON Wallet</h2>
+                <button class="overlay-close" data-close="wallet-modal">✖</button>
+            </div>
+            <div id="ton-connect-button"></div>
+            <p id="wallet-address"></p>
         </div>
-        <div class="modal-body">
-          <p id="wallet-address"></p>
-          <div id="ton-connect-button"></div>
-          <button id="buy-coins-ton-btn" class="primary-btn wallet-buy-btn">
-            Buy coins with TON
-          </button>
-          <p class="modal-hint">
-            Transfers go to dev wallet for now:<br />
-            <span class="mono">
-              UQBMjI5CjFPMy7ouPUvpD0hZMdxOvaoROuzcUFxRkkL4TP3f
-            </span>
-          </p>
-        </div>
-      </div>
     </div>
 
     <!-- TASKS MODAL -->
-    <div id="tasks-modal" class="modal hidden">
-      <div class="modal-backdrop" data-close="tasks-modal"></div>
-      <div class="modal-content modal-tasks">
-        <div class="modal-header">
-          <h2 class="tasks-title">Daily Tasks</h2>
-          <button class="close-btn" data-close="tasks-modal">✕</button>
-        </div>
-        <div class="modal-body">
-          <p class="tasks-subtitle">
-            Complete tasks to earn extra coins and TON.
-          </p>
-          <div id="tasks-list" class="tasks-list"></div>
-        </div>
-      </div>
-    </div>
-  </div>
+    <div id="tasks-modal" class="overlay hidden">
+        <div class="overlay-content tasks-modal-content">
+            <div class="overlay-header">
+                <h2 class="tasks-title">Daily Tasks</h2>
+                <button class="overlay-close" data-close="tasks-modal">✖</button>
+            </div>
 
-  <script src="/static/app.js"></script>
+            <p class="tasks-subtitle">Complete tasks to earn coins and TON</p>
+
+            <div id="tasks-list"></div>
+        </div>
+    </div>
+
+    <!-- INVITE MODAL -->
+    <div id="invite-modal" class="overlay hidden">
+        <div class="overlay-content">
+            <div class="overlay-header">
+                <h2>Invite Friends</h2>
+                <button class="overlay-close" data-close="invite-modal">✖</button>
+            </div>
+
+            <p>Share your link:</p>
+            <textarea id="invite-link" readonly></textarea>
+
+            <button id="copy-invite-link" class="menu-btn">Copy</button>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
 </body>
 </html>
+e
