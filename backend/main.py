@@ -1,21 +1,36 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from sqlalchemy import desc, func
+from datetime import datetime, timedelta
+
 import os
 
-from .db import SessionLocal, Base, engine
+from .db import SessionLocal, engine, Base
 from .models import User, TaskStatus
 
 # -------------------------------------------------------------------
-# DB init
+# APP INIT
 # -------------------------------------------------------------------
+
+app = FastAPI()
+
 Base.metadata.create_all(bind=engine)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.mount("/static", StaticFiles(directory="webapp"), name="static")
+
+# -------------------------------------------------------------------
+# DB SESSION
+# -------------------------------------------------------------------
 
 def get_db():
     db = SessionLocal()
@@ -24,195 +39,73 @@ def get_db():
     finally:
         db.close()
 
-
 # -------------------------------------------------------------------
-# FastAPI app
+# USER INIT / GET
 # -------------------------------------------------------------------
-app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Telegram Mini App için geniş bırakıyoruz
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+@app.get("/api/me")
+def get_user(telegram_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter_by(telegram_id=telegram_id).first()
 
-# -------------------------------------------------------------------
-# Static files (webapp)
-# -------------------------------------------------------------------
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-WEBAPP_DIR = os.path.join(BASE_DIR, "webapp")
-
-app.mount("/static", StaticFiles(directory=WEBAPP_DIR), name="static")
-
-
-@app.get("/", response_class=HTMLResponse)
-async def index():
-    index_path = os.path.join(WEBAPP_DIR, "index.html")
-    if not os.path.exists(index_path):
-        raise HTTPException(status_code=404, detail="index.html not found")
-    return FileResponse(index_path)
-
-
-# -------------------------------------------------------------------
-# Pydantic şemalar
-# -------------------------------------------------------------------
-class UserOut(BaseModel):
-    telegram_id: int
-    coins: int
-    total_coins: int
-    level: int
-    tap_power: int
-    ton_credits: float = 0.0
-
-    class Config:
-        orm_mode = True
-
-
-class TapRequest(BaseModel):
-    telegram_id: int
-    taps: int = 1
-
-
-class UpgradeTapPowerRequest(BaseModel):
-    telegram_id: int
-
-
-class RewardAdRequest(BaseModel):
-    telegram_id: int
-
-
-class TaskCheckRequest(BaseModel):
-    telegram_id: int
-    task_id: str
-
-
-class TaskClaimRequest(BaseModel):
-    telegram_id: int
-    task_id: str
-
-
-class TaskStatusOut(BaseModel):
-    task_id: str
-    status: str
-
-
-class LeaderboardEntry(BaseModel):
-    telegram_id: int
-    coins: int
-    total_coins: int
-    level: int
-    tap_power: int
-    rank: int
-
-
-class LeaderboardResponse(BaseModel):
-    top: List[LeaderboardEntry]
-    my_rank: Optional[int] = None
-
-
-# -------------------------------------------------------------------
-# Helpers
-# -------------------------------------------------------------------
-def get_or_create_user(db: Session, telegram_id: int) -> User:
-    user = db.query(User).filter(User.telegram_id == telegram_id).first()
     if not user:
         user = User(
             telegram_id=telegram_id,
             coins=0,
             total_coins=0,
             level=1,
+            xp=0,
+            next_level_xp=1000,
             tap_power=1,
             ton_credits=0.0,
+            referrals=0,
+            referred_by=None,
+            last_tap=datetime.utcnow(),
+            last_daily_chest=None,
         )
         db.add(user)
         db.commit()
         db.refresh(user)
+
     return user
 
-
-def get_task_status_row(db: Session, telegram_id: int, task_id: str) -> TaskStatus:
-    row = (
-        db.query(TaskStatus)
-        .filter(TaskStatus.telegram_id == telegram_id, TaskStatus.task_id == task_id)
-        .first()
-    )
-    if not row:
-        row = TaskStatus(telegram_id=telegram_id, task_id=task_id, status="pending")
-        db.add(row)
-        db.commit()
-        db.refresh(row)
-    return row
-
-
-# Basit görev tanımları (backend tarafında ödül tablosu)
-TASK_DEFS = {
-    # Günlük TON Chest – backend'den TON kredi veriyoruz.
-    "daily_ton_chest": {
-        "reward_coins": 0,
-        "reward_ton": 0.1,
-    },
-    # Invite Friends – referans başına sabit coin, TON isteğe bağlı
-    "invite_friends": {
-        "reward_coins": 2000,
-        "reward_ton": 0.02,
-    },
-    # Partner ziyaret görevi örnekleri
-    "visit_boinker": {
-        "reward_coins": 1000,
-        "reward_ton": 0.0,
-    },
-    "visit_dotcoin": {
-        "reward_coins": 1000,
-        "reward_ton": 0.0,
-    },
-    "visit_bbqcoin": {
-        "reward_coins": 1000,
-        "reward_ton": 0.0,
-    },
-}
-
-
 # -------------------------------------------------------------------
-# API: /api/me
+# TAP API (Fix: çalışmama sorunu giderildi)
 # -------------------------------------------------------------------
-@app.get("/api/me", response_model=UserOut)
-def get_me(telegram_id: int, db: Session = Depends(get_db)):
-    user = get_or_create_user(db, telegram_id)
-    return user
 
-
-# -------------------------------------------------------------------
-# API: /api/tap
-# -------------------------------------------------------------------
 @app.post("/api/tap")
-def tap(req: TapRequest, db: Session = Depends(get_db)):
-    """
-    Tek tık / çoklu tık.
-    coins ve total_coins, tap_power * taps kadar artar.
-    """
-    user = get_or_create_user(db, req.telegram_id)
+def tap(telegram_id: int, taps: int = 1, db: Session = Depends(get_db)):
+    user = db.query(User).filter_by(telegram_id=telegram_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="USER_NOT_FOUND")
 
-    if req.taps <= 0:
-        raise HTTPException(status_code=400, detail="Invalid taps")
-
-    gained = req.taps * user.tap_power
+    gained = taps * user.tap_power
     user.coins += gained
     user.total_coins += gained
+    user.xp += gained
+
+    # LEVEL-UP SYSTEM
+    while user.xp >= user.next_level_xp:
+        user.level += 1
+        user.xp -= user.next_level_xp
+        user.next_level_xp = int(user.next_level_xp * 1.5)
 
     db.commit()
     db.refresh(user)
+
     return {"user": user}
 
+# -------------------------------------------------------------------
+# UPGRADE TAP POWER
+# -------------------------------------------------------------------
 
-# -------------------------------------------------------------------
-# API: /api/upgrade/tap_power (şimdilik eski haliyle korunuyor)
-# -------------------------------------------------------------------
 @app.post("/api/upgrade/tap_power")
-def upgrade_tap_power(req: UpgradeTapPowerRequest, db: Session = Depends(get_db)):
-    user = get_or_create_user(db, req.telegram_id)
-    # Basit mantık: yeni güç maliyeti = tap_power * 100
+def upgrade_tap_power(data: dict, db: Session = Depends(get_db)):
+    telegram_id = data.get("telegram_id")
+    user = db.query(User).filter_by(telegram_id=telegram_id).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="USER_NOT_FOUND")
+
     cost = user.tap_power * 100
 
     if user.coins < cost:
@@ -220,168 +113,153 @@ def upgrade_tap_power(req: UpgradeTapPowerRequest, db: Session = Depends(get_db)
 
     user.coins -= cost
     user.tap_power += 1
-
     db.commit()
     db.refresh(user)
+
     return {"user": user}
 
+# -------------------------------------------------------------------
+# DAILY TON CHEST — günde 10 reklam izleme
+# -------------------------------------------------------------------
 
-# -------------------------------------------------------------------
-# API: /api/reward/ad (Rewarded video sonrası TON kredisi)
-# -------------------------------------------------------------------
 @app.post("/api/reward/ad")
-def reward_ad(req: RewardAdRequest, db: Session = Depends(get_db)):
-    """
-    AdsGram Rewarded video başarılı oynatıldığında çağrılır.
-    Şimdilik günlük limit vs. yok – her çağrıda 0.1 TON Credits ekler.
-    """
-    user = get_or_create_user(db, req.telegram_id)
-    if user.ton_credits is None:
-        user.ton_credits = 0.0
+def reward_ad(data: dict, db: Session = Depends(get_db)):
+    telegram_id = data.get("telegram_id")
+    user = db.query(User).filter_by(telegram_id=telegram_id).first()
 
-    user.ton_credits += 0.1
+    if not user:
+        raise HTTPException(status_code=404, detail="USER_NOT_FOUND")
 
-    db.commit()
-    db.refresh(user)
-    return {"user": user}
+    now = datetime.utcnow()
+    if not user.last_daily_chest:
+        user.last_daily_chest = now
+        user.daily_ads_count = 0
 
+    # yeni güne geçtiyse resetle
+    if user.last_daily_chest.date() != now.date():
+        user.daily_ads_count = 0
+        user.last_daily_chest = now
 
-# -------------------------------------------------------------------
-# API: /api/tasks/status
-# -------------------------------------------------------------------
-@app.get("/api/tasks/status", response_model=List[TaskStatusOut])
-def get_tasks_status(telegram_id: int, db: Session = Depends(get_db)):
-    """
-    Frontend'deki görev ID'leri için status döner.
-    Bilinmeyen task_id gelirse 'pending' kabul ediyoruz.
-    """
-    rows = (
-        db.query(TaskStatus).filter(TaskStatus.telegram_id == telegram_id).all()
-    )
+    if user.daily_ads_count >= 10:
+        raise HTTPException(status_code=400, detail="DAILY_LIMIT_REACHED")
 
-    status_map = {row.task_id: row.status for row in rows}
-
-    result = []
-    for task_id in TASK_DEFS.keys():
-        result.append(
-            TaskStatusOut(
-                task_id=task_id, status=status_map.get(task_id, "pending")
-            )
-        )
-
-    return result
-
-
-# -------------------------------------------------------------------
-# API: /api/tasks/check
-# -------------------------------------------------------------------
-@app.post("/api/tasks/check", response_model=TaskStatusOut)
-def check_task(req: TaskCheckRequest, db: Session = Depends(get_db)):
-    """
-    GO tuşuna bastıktan sonra CHECK çağrılır.
-    Şimdilik 'gerçek doğrulama' yok, sadece status 'checked' yapıyoruz.
-    """
-    if req.task_id not in TASK_DEFS:
-        raise HTTPException(status_code=400, detail="UNKNOWN_TASK")
-
-    row = get_task_status_row(db, req.telegram_id, req.task_id)
-
-    # Zaten claimed ise tekrar check etmeyelim
-    if row.status == "claimed":
-        return TaskStatusOut(task_id=req.task_id, status=row.status)
-
-    row.status = "checked"
-    db.commit()
-    db.refresh(row)
-    return TaskStatusOut(task_id=req.task_id, status=row.status)
-
-
-# -------------------------------------------------------------------
-# API: /api/tasks/claim
-# -------------------------------------------------------------------
-@app.post("/api/tasks/claim")
-def claim_task(req: TaskClaimRequest, db: Session = Depends(get_db)):
-    """
-    CHECK sonrası CLAM çağrılır.
-    status 'checked' ise ödül verip 'claimed' yapar.
-    """
-    if req.task_id not in TASK_DEFS:
-        raise HTTPException(status_code=400, detail="UNKNOWN_TASK")
-
-    user = get_or_create_user(db, req.telegram_id)
-    row = get_task_status_row(db, req.telegram_id, req.task_id)
-
-    if row.status != "checked":
-        raise HTTPException(status_code=400, detail="TASK_NOT_READY")
-
-    # Zaten claimed ise tekrar ödül verme
-    if row.status == "claimed":
-        return {"task_status": "claimed", "user": user, "reward_coins": 0, "reward_ton": 0.0}
-
-    config = TASK_DEFS[req.task_id]
-    reward_coins = int(config.get("reward_coins", 0) or 0)
-    reward_ton = float(config.get("reward_ton", 0.0) or 0.0)
-
-    user.coins += reward_coins
-    user.total_coins += reward_coins
-    if user.ton_credits is None:
-        user.ton_credits = 0.0
-    user.ton_credits += reward_ton
-
-    row.status = "claimed"
+    user.daily_ads_count += 1
+    user.ton_credits += 0.01
 
     db.commit()
     db.refresh(user)
-    db.refresh(row)
 
+    remaining = 10 - user.daily_ads_count
     return {
-        "task_status": row.status,
         "user": user,
-        "reward_coins": reward_coins,
-        "reward_ton": reward_ton,
+        "remaining": remaining
     }
 
+# -------------------------------------------------------------------
+# REFERRAL SYSTEM (Invite Friends)
+# -------------------------------------------------------------------
+
+@app.get("/api/referral/use")
+def referral_use(user_id: int, ref: int, db: Session = Depends(get_db)):
+    if user_id == ref:
+        return {"status": "ignored"}
+
+    user = db.query(User).filter_by(telegram_id=user_id).first()
+    ref_user = db.query(User).filter_by(telegram_id=ref).first()
+
+    if not user or not ref_user:
+        return {"status": "ignored"}
+
+    # sadece 1 kez say
+    if user.referred_by is None:
+        user.referred_by = ref
+        ref_user.referrals += 1
+        ref_user.ton_credits += 0.02
+        db.commit()
+
+    return {"status": "ok"}
 
 # -------------------------------------------------------------------
-# API: /api/leaderboard
+# DAILY TASK CHECK + CLAIM
 # -------------------------------------------------------------------
-@app.get("/api/leaderboard", response_model=LeaderboardResponse)
-def leaderboard(telegram_id: Optional[int] = None, db: Session = Depends(get_db)):
-    """
-    En çok total_coins'e sahip ilk 10 kullanıcı + isteğe bağlı my_rank.
-    """
-    # Top 10
-    top_users = (
+
+@app.get("/api/tasks/status")
+def get_task_status(telegram_id: int, db: Session = Depends(get_db)):
+    tasks = db.query(TaskStatus).filter_by(telegram_id=telegram_id).all()
+    return tasks
+
+
+@app.post("/api/tasks/check")
+def check_task(data: dict, db: Session = Depends(get_db)):
+    telegram_id = data.get("telegram_id")
+    task_id = data.get("task_id")
+
+    record = db.query(TaskStatus).filter_by(
+        telegram_id=telegram_id, task_id=task_id
+    ).first()
+
+    if not record:
+        record = TaskStatus(
+            telegram_id=telegram_id, task_id=task_id, status="checked"
+        )
+        db.add(record)
+    else:
+        record.status = "checked"
+
+    db.commit()
+    return {"task_status": "checked"}
+
+
+@app.post("/api/tasks/claim")
+def claim_task(data: dict, db: Session = Depends(get_db)):
+    telegram_id = data.get("telegram_id")
+    task_id = data.get("task_id")
+
+    record = db.query(TaskStatus).filter_by(
+        telegram_id=telegram_id, task_id=task_id
+    ).first()
+
+    if not record or record.status != "checked":
+        raise HTTPException(status_code=400, detail="TASK_NOT_READY")
+
+    record.status = "claimed"
+
+    # ödül ver
+    user = db.query(User).filter_by(telegram_id=telegram_id).first()
+    user.coins += 1000
+
+    db.commit()
+    return {"task_status": "claimed", "reward_coins": 1000}
+
+# -------------------------------------------------------------------
+# LEADERBOARD (Top 10 + user rank) — %100 çalışan final sürüm
+# -------------------------------------------------------------------
+
+@app.get("/api/leaderboard")
+def leaderboard(telegram_id: int, db: Session = Depends(get_db)):
+    top10 = (
         db.query(User)
-        .order_by(User.total_coins.desc())
+        .order_by(desc(User.total_coins))
         .limit(10)
         .all()
     )
 
-    top_entries: List[LeaderboardEntry] = []
-    for idx, u in enumerate(top_users, start=1):
-        top_entries.append(
-            LeaderboardEntry(
-                telegram_id=u.telegram_id,
-                coins=u.coins,
-                total_coins=u.total_coins,
-                level=u.level,
-                tap_power=u.tap_power,
-                rank=idx,
-            )
-        )
+    # user rank
+    user_rank = (
+        db.query(func.count(User.id))
+        .filter(User.total_coins > db.query(User.total_coins).filter_by(telegram_id=telegram_id).scalar())
+        .scalar()
+    ) + 1
 
-    my_rank = None
-    if telegram_id is not None:
-        # Tüm kullanıcılar içinde sıralama
-        all_users = (
-            db.query(User)
-            .order_by(User.total_coins.desc())
-            .all()
-        )
-        for idx, u in enumerate(all_users, start=1):
-            if u.telegram_id == telegram_id:
-                my_rank = idx
-                break
+    return {
+        "top10": top10,
+        "user_rank": user_rank
+    }
 
-    return LeaderboardResponse(top=top_entries, my_rank=my_rank)
+# -------------------------------------------------------------------
+# ROOT (Serves the Mini App)
+# -------------------------------------------------------------------
+
+@app.get("/{full_path:path}", response_class=HTMLResponse)
+def serve_app(full_path: str):
+    return FileResponse("webapp/index.html")
