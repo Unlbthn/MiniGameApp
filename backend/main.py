@@ -10,6 +10,13 @@ import os
 from .db import SessionLocal, engine, Base
 from .models import User, TaskStatus
 
+from .db import Base, engine
+
+# --- AUTO CREATE TABLES ---
+print("Creating tables if not exist...")
+Base.metadata.create_all(bind=engine)
+
+
 # -------------------------------------------------------------------
 # FastAPI app init
 # -------------------------------------------------------------------
