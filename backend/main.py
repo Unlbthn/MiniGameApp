@@ -1,32 +1,18 @@
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Body
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_, and_
-from datetime import datetime, timedelta
 import os
-from typing import Optional, List
 
 from .db import SessionLocal, engine, Base
 from .models import User, TaskStatus
 
-# -------------------------------------------------
-# FastAPI & DB
-# -------------------------------------------------
-
-app = FastAPI(title="Tap to Earn TON")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
+# -------------------------------------------------------------------
+# Database
+# -------------------------------------------------------------------
 Base.metadata.create_all(bind=engine)
-
 
 def get_db():
     db = SessionLocal()
@@ -35,28 +21,27 @@ def get_db():
     finally:
         db.close()
 
+# -------------------------------------------------------------------
+# FastAPI App
+# -------------------------------------------------------------------
+app = FastAPI()
 
-# -------------------------------------------------
-# Helpers & constants
-# -------------------------------------------------
+# Static folder
+app.mount("/static", StaticFiles(directory="webapp"), name="static")
 
-DAILY_AD_LIMIT = 10
-AD_REWARD_TON = 0.1
-
-TURBO_MULTIPLIER = 2
-TURBO_DURATION_SECONDS = 600  # 10 dakika
-DAILY_TURBO_LIMIT = 3
-
-
-def get_or_create_user(db: Session, telegram_id: int) -> User:
+# -------------------------------------------------------------------
+# Helpers
+# -------------------------------------------------------------------
+def get_or_create_user(db: Session, telegram_id: int):
     user = db.query(User).filter(User.telegram_id == telegram_id).first()
     if not user:
         user = User(
             telegram_id=telegram_id,
-            level=1,
             coins=0,
             tap_power=1,
             ton_credits=0.0,
+            level=1,
+            total_taps=0
         )
         db.add(user)
         db.commit()
@@ -64,310 +49,111 @@ def get_or_create_user(db: Session, telegram_id: int) -> User:
     return user
 
 
-def refresh_turbo_state(user: User):
-    """Turbo süresi bittiyse pasif yap."""
-    now = datetime.utcnow()
-    if user.turbo_expires_at and user.turbo_expires_at <= now:
-        user.turbo_active = False
-        user.turbo_expires_at = None
-
-
-def user_to_dict(user: User) -> dict:
-    refresh_turbo_state(user)
-    now = datetime.utcnow()
-    turbo_remaining = 0
-    if user.turbo_expires_at and user.turbo_expires_at > now:
-        turbo_remaining = int((user.turbo_expires_at - now).total_seconds())
-
+def user_to_dict(user: User):
     return {
         "telegram_id": user.telegram_id,
-        "level": user.level,
         "coins": user.coins,
         "tap_power": user.tap_power,
         "ton_credits": float(user.ton_credits or 0),
-        "turbo_active": bool(user.turbo_active),
-        "turbo_remaining": turbo_remaining,
+        "level": user.level,
+        "total_taps": user.total_taps or 0,
     }
 
+# -------------------------------------------------------------------
+# Routes
+# -------------------------------------------------------------------
 
-# -------------------------------------------------
-# API: User & game logic
-# -------------------------------------------------
+@app.get("/", response_class=HTMLResponse)
+def index():
+    return FileResponse("webapp/index.html")
 
-@app.get("/api/me", response_model=dict)
+@app.get("/api/me")
 def get_me(telegram_id: int, db: Session = Depends(get_db)):
     user = get_or_create_user(db, telegram_id)
     return user_to_dict(user)
 
-
+# -------------------------------------------------------------------
+# FIXED TAP ENDPOINT
+# -------------------------------------------------------------------
 @app.post("/api/tap")
-def tap(payload: dict, db: Session = Depends(get_db)):
-    telegram_id = int(payload.get("telegram_id"))
-    taps = int(payload.get("taps", 1))
+def tap(payload: dict = Body(...), db: Session = Depends(get_db)):
+    telegram_id_raw = payload.get("telegram_id")
+    taps_raw = payload.get("taps", 1)
+
+    if telegram_id_raw is None:
+        raise HTTPException(status_code=400, detail="telegram_id is required")
+
+    try:
+        telegram_id = int(telegram_id_raw)
+    except:
+        raise HTTPException(status_code=400, detail="invalid telegram_id")
+
+    try:
+        taps = int(taps_raw or 1)
+    except:
+        taps = 1
+
+    if taps < 1:
+        taps = 1
+    if taps > 100:
+        taps = 100
 
     user = get_or_create_user(db, telegram_id)
-    refresh_turbo_state(user)
 
-    effective_power = user.tap_power
-    if user.turbo_active:
-        effective_power *= TURBO_MULTIPLIER
-
-    gained = taps * effective_power
+    gained = user.tap_power * taps
     user.coins += gained
 
-    # Level sistemi:
-    # level=1 → 1000 coin üstü level 2
-    # level=2 → 2000 coin üstü level 3
-    required = user.level * 1000
-    while user.coins >= required:
-        user.level += 1
-        required = user.level * 1000
+    user.total_taps = (user.total_taps or 0) + taps
 
     db.commit()
     db.refresh(user)
-    return {"user": user_to_dict(user), "gained": gained}
 
-
-@app.post("/api/upgrade/tap_power")
-def upgrade_tap_power(payload: dict, db: Session = Depends(get_db)):
-    telegram_id = int(payload.get("telegram_id"))
-    user = get_or_create_user(db, telegram_id)
-
-    cost = user.tap_power * 100  # 1→100, 2→200...
-    if user.coins < cost:
-        raise HTTPException(status_code=400, detail="NOT_ENOUGH_COINS")
-
-    user.coins -= cost
-    user.tap_power += 1
-
-    db.commit()
-    db.refresh(user)
-    return {"user": user_to_dict(user), "cost": cost}
-
-
-# -------------------------------------------------
-# AdsGram reward (video izleme → TON)
-# -------------------------------------------------
-
-@app.post("/api/reward/ad")
-def reward_ad(
-    payload: Optional[dict] = None,
-    telegram_id: Optional[int] = Query(None),
-    db: Session = Depends(get_db),
-):
-    """
-    Hem:
-      - POST JSON: { "telegram_id": 123 }
-      - GET/POST ?telegram_id=123
-    formatlarını destekler.
-    AdsGram server callback + frontend isteği aynı endpointi kullanabilir.
-    """
-    if payload and "telegram_id" in payload:
-        telegram_id = int(payload["telegram_id"])
-    elif telegram_id is not None:
-        telegram_id = int(telegram_id)
-
-    if telegram_id is None:
-        raise HTTPException(status_code=400, detail="TELEGRAM_ID_REQUIRED")
-
-    user = get_or_create_user(db, telegram_id)
-
-    # Günlük limit reset
-    today = datetime.utcnow().date()
-    if user.last_ad_view_at is None or user.last_ad_view_at.date() != today:
-        user.daily_ad_views = 0
-
-    if user.daily_ad_views >= DAILY_AD_LIMIT:
-        raise HTTPException(status_code=400, detail="DAILY_LIMIT_REACHED")
-
-    user.daily_ad_views += 1
-    user.ton_credits = (user.ton_credits or 0) + AD_REWARD_TON
-    user.last_ad_view_at = datetime.utcnow()
-
-    db.commit()
-    db.refresh(user)
-    remaining = DAILY_AD_LIMIT - user.daily_ad_views
-    return {
-        "user": user_to_dict(user),
-        "remaining": remaining,
-        "reward_ton": AD_REWARD_TON,
-    }
-
-
-# -------------------------------------------------
-# Tasks (Daily Tasks + Invite + Turbo)
-# -------------------------------------------------
-
-@app.get("/api/tasks/status")
-def task_status(telegram_id: int, db: Session = Depends(get_db)) -> List[dict]:
-    rows = (
-        db.query(TaskStatus)
-        .filter(TaskStatus.telegram_id == telegram_id)
-        .all()
-    )
-    return [{"task_id": r.task_id, "status": r.status} for r in rows]
-
-
-@app.post("/api/tasks/check")
-def check_task(payload: dict, db: Session = Depends(get_db)):
-    telegram_id = int(payload.get("telegram_id"))
-    task_id = payload.get("task_id")
-
-    user = get_or_create_user(db, telegram_id)
-
-    row = (
-        db.query(TaskStatus)
-        .filter(TaskStatus.telegram_id == telegram_id, TaskStatus.task_id == task_id)
-        .first()
-    )
-    if not row:
-        row = TaskStatus(
-            telegram_id=telegram_id,
-            task_id=task_id,
-            status="checked",
-        )
-        db.add(row)
-    else:
-        row.status = "checked"
-
-    db.commit()
-    return {"task_status": row.status}
-
-
-@app.post("/api/tasks/claim")
-def claim_task(payload: dict, db: Session = Depends(get_db)):
-    telegram_id = int(payload.get("telegram_id"))
-    task_id = payload.get("task_id")
-
-    user = get_or_create_user(db, telegram_id)
-
-    row = (
-        db.query(TaskStatus)
-        .filter(TaskStatus.telegram_id == telegram_id, TaskStatus.task_id == task_id)
-        .first()
-    )
-    if not row or row.status != "checked":
-        raise HTTPException(status_code=400, detail="TASK_NOT_READY")
-
-    reward_coins = 0
-    reward_ton = 0.0
-
-    if task_id == "affiliate_boinker":
-        reward_coins = 1000
-        user.coins += reward_coins
-    elif task_id == "invite_friends":
-        reward_ton = 0.02
-        user.ton_credits = (user.ton_credits or 0) + reward_ton
-    elif task_id == "turbo_task":
-        # Turbo görevi → 10 dakika turbo
-        now = datetime.utcnow()
-        user.turbo_active = True
-        user.turbo_expires_at = now + timedelta(seconds=TURBO_DURATION_SECONDS)
-
-    row.status = "claimed"
-
-    db.commit()
-    db.refresh(user)
-    return {
-        "task_status": row.status,
-        "user": user_to_dict(user),
-        "reward_coins": reward_coins,
-        "reward_ton": reward_ton,
-    }
-
-
-# Turbo endpoint alias (gerekirse başka yerden çağırmak için)
-@app.post("/api/turbo/activate")
-def activate_turbo(payload: dict, db: Session = Depends(get_db)):
-    telegram_id = int(payload.get("telegram_id"))
-    user = get_or_create_user(db, telegram_id)
-
-    now = datetime.utcnow()
-
-    # Günlük limit için user.daily_turbo_count gibi alanların var olduğunu varsayıyoruz
-    if hasattr(user, "daily_turbo_count") and hasattr(user, "last_turbo_at"):
-        if user.last_turbo_at is None or user.last_turbo_at.date() != now.date():
-            user.daily_turbo_count = 0
-        if user.daily_turbo_count >= DAILY_TURBO_LIMIT:
-            raise HTTPException(status_code=400, detail="DAILY_TURBO_LIMIT")
-        user.daily_turbo_count += 1
-        user.last_turbo_at = now
-
-    user.turbo_active = True
-    user.turbo_expires_at = now + timedelta(seconds=TURBO_DURATION_SECONDS)
-
-    db.commit()
-    db.refresh(user)
     return {"user": user_to_dict(user)}
 
+# -------------------------------------------------------------------
+# Daily TON Chest (Rewarded Ads)
+# -------------------------------------------------------------------
+@app.post("/api/reward/ad")
+def reward_ad(payload: dict = Body(...), db: Session = Depends(get_db)):
+    telegram_id = payload.get("telegram_id")
+    if telegram_id is None:
+        raise HTTPException(status_code=400, detail="telegram_id required")
 
-@app.post("/api/turbo/start")
-def turbo_start(payload: dict, db: Session = Depends(get_db)):
-    """Eski frontend /api/turbo/start çağırıyorsa bozulmasın diye alias."""
-    return activate_turbo(payload, db)
+    user = get_or_create_user(db, telegram_id)
 
+    # günlük limit
+    if user.daily_ad_count >= 10:
+        raise HTTPException(status_code=400, detail="DAILY_LIMIT_REACHED")
 
-# -------------------------------------------------
-# Leaderboard (TOP 10 + me_rank)
-# -------------------------------------------------
+    user.daily_ad_count += 1
+    user.ton_credits += 0.01
 
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "user": user_to_dict(user),
+        "remaining": 10 - user.daily_ad_count
+    }
+
+# -------------------------------------------------------------------
+# LEADERBOARD (Top 10 + user's rank)
+# -------------------------------------------------------------------
 @app.get("/api/leaderboard")
-def get_leaderboard(
-    telegram_id: Optional[int] = Query(None),
-    db: Session = Depends(get_db),
-):
-    """
-    TOP 10 kullanıcıyı coins'e göre döner.
-    Ayrıca verilen telegram_id için global sıralamayı (me_rank) hesaplar.
-    """
-    # TOP 10
-    top_rows = (
-        db.query(User)
-        .order_by(User.coins.desc())
-        .limit(10)
-        .all()
-    )
+def leaderboard(telegram_id: int, db: Session = Depends(get_db)):
+    users = db.query(User).order_by(User.coins.desc()).all()
 
-    top = []
-    for u in top_rows:
-        top.append(
-            {
-                "telegram_id": u.telegram_id,
-                "coins": u.coins,
-                # İleride display_name alanı eklersek buradan döneriz.
-                # "display_name": u.display_name if hasattr(u, "display_name") else None,
-            }
-        )
+    top10 = [
+        {"telegram_id": u.telegram_id, "coins": u.coins}
+        for u in users[:10]
+    ]
 
-    me_rank: Optional[int] = None
-    if telegram_id is not None:
-        me = (
-            db.query(User)
-            .filter(User.telegram_id == telegram_id)
-            .first()
-        )
-        if me:
-            higher_count = (
-                db.query(func.count(User.telegram_id))
-                .filter(User.coins > me.coins)
-                .scalar()
-            )
-            me_rank = int(higher_count) + 1
+    # Rank hesaplama
+    rank = None
+    for index, u in enumerate(users, start=1):
+        if u.telegram_id == telegram_id:
+            rank = index
+            break
 
-    return {"top": top, "me_rank": me_rank}
+    return {"top10": top10, "rank": rank}
 
-
-# -------------------------------------------------
-# Static files & root
-# -------------------------------------------------
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-WEBAPP_DIR = os.path.join(BASE_DIR, "webapp")
-
-app.mount("/static", StaticFiles(directory=WEBAPP_DIR), name="static")
-
-
-@app.get("/", response_class=HTMLResponse)
-def serve_index():
-    index_path = os.path.join(WEBAPP_DIR, "index.html")
-    return FileResponse(index_path)
