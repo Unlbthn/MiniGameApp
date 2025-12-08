@@ -132,6 +132,50 @@ function initAdsGram() {
     }
 }
 
+async function tapOnce() {
+  if (!userId) return;
+
+  try {
+    // backend query param beklediği için URL'e ekliyoruz
+    const url =
+      API_BASE +
+      `/api/tap?telegram_id=${encodeURIComponent(userId)}&taps=1`;
+
+    const res = await fetch(url, {
+      method: "POST",
+    });
+
+    if (!res.ok) {
+      // Hata detayını konsola yaz (debug için)
+      try {
+        const errData = await res.json();
+        console.error("tap error:", errData);
+      } catch (e) {
+        console.error("tap error (no json):", e);
+      }
+      alert("Tap failed, please try again.");
+      return;
+    }
+
+    const data = await res.json();
+
+    if (data.user) {
+      userState = data.user;
+      renderUser();
+    }
+
+    // Reklam sayacı (mevcut mantığın devamı)
+    tapCounter += 1;
+    if (tapCounter >= TAPS_PER_AD) {
+      tapCounter = 0;
+      maybeShowInterstitial();
+    }
+  } catch (err) {
+    console.error("tapOnce error:", err);
+    alert("Tap failed, please try again.");
+  }
+}
+
 document.querySelector("#tap-btn").addEventListener("click", async () => {
     const res = await fetch(`${API}/api/tap`, {
         method: "POST",
