@@ -115,7 +115,9 @@ def tap(payload: dict, db: Session = Depends(get_db)):
     gained = taps * effective_power
     user.coins += gained
 
-    # basit level sistemi: required = level * 1000
+    # Level sistemi:
+    # level=1 → 1000 coin üstü level 2
+    # level=2 → 2000 coin üstü level 3
     required = user.level * 1000
     while user.coins >= required:
         user.level += 1
@@ -158,7 +160,7 @@ def reward_ad(
       - POST JSON: { "telegram_id": 123 }
       - GET/POST ?telegram_id=123
     formatlarını destekler.
-    Böylece AdsGram server callback + frontend isteği aynı endpointi kullanabilir.
+    AdsGram server callback + frontend isteği aynı endpointi kullanabilir.
     """
     if payload and "telegram_id" in payload:
         telegram_id = int(payload["telegram_id"])
@@ -282,8 +284,7 @@ def activate_turbo(payload: dict, db: Session = Depends(get_db)):
 
     now = datetime.utcnow()
 
-    # Günlük limit için user.daily_turbo_count gibi bir alanın olduğunu varsayıyoruz;
-    # yoksa burayı ileride genişletiriz.
+    # Günlük limit için user.daily_turbo_count gibi alanların var olduğunu varsayıyoruz
     if hasattr(user, "daily_turbo_count") and hasattr(user, "last_turbo_at"):
         if user.last_turbo_at is None or user.last_turbo_at.date() != now.date():
             user.daily_turbo_count = 0
@@ -304,6 +305,56 @@ def activate_turbo(payload: dict, db: Session = Depends(get_db)):
 def turbo_start(payload: dict, db: Session = Depends(get_db)):
     """Eski frontend /api/turbo/start çağırıyorsa bozulmasın diye alias."""
     return activate_turbo(payload, db)
+
+
+# -------------------------------------------------
+# Leaderboard (TOP 10 + me_rank)
+# -------------------------------------------------
+
+@app.get("/api/leaderboard")
+def get_leaderboard(
+    telegram_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """
+    TOP 10 kullanıcıyı coins'e göre döner.
+    Ayrıca verilen telegram_id için global sıralamayı (me_rank) hesaplar.
+    """
+    # TOP 10
+    top_rows = (
+        db.query(User)
+        .order_by(User.coins.desc())
+        .limit(10)
+        .all()
+    )
+
+    top = []
+    for u in top_rows:
+        top.append(
+            {
+                "telegram_id": u.telegram_id,
+                "coins": u.coins,
+                # İleride display_name alanı eklersek buradan döneriz.
+                # "display_name": u.display_name if hasattr(u, "display_name") else None,
+            }
+        )
+
+    me_rank: Optional[int] = None
+    if telegram_id is not None:
+        me = (
+            db.query(User)
+            .filter(User.telegram_id == telegram_id)
+            .first()
+        )
+        if me:
+            higher_count = (
+                db.query(func.count(User.telegram_id))
+                .filter(User.coins > me.coins)
+                .scalar()
+            )
+            me_rank = int(higher_count) + 1
+
+    return {"top": top, "me_rank": me_rank}
 
 
 # -------------------------------------------------
