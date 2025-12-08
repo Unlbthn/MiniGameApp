@@ -1,70 +1,148 @@
-// ---------------------------
 // Telegram WebApp
-// ---------------------------
 const tg = window.Telegram ? window.Telegram.WebApp : null;
 
-// ---------------------------
-// Lang
-// ---------------------------
+// Languages
 const LANG = {
   en: {
     tap: "TAP",
     upgrade_title: "Upgrade",
     upgrade_btn_prefix: "Increase Tap Power (cost: ",
     wallet_title: "TON Wallet",
-    buy_ton: "Buy coins with TON (beta)",
+    buy_ton: "Buy coins with TON (soon)",
     daily_tasks: "Daily Tasks",
     daily_sub: "Complete tasks to earn extra coins and TON credits.",
     tasks_button: "Daily Tasks",
     ton_credits_label: "TON Credits",
+    daily_ton_chest_title: "Daily TON Chest",
+    daily_ton_chest_desc: "Watch a short ad and get 0.1 TON credits.",
+    watch_ad: "WATCH AD",
+    go: "GO",
+    check: "CHECK",
+    claim: "CLAIM",
+    invite_title: "Invite Friends",
+    invite_desc: "Invite a friend. When they reach 200 coins, you get +0.02 TON.",
+    invite_reward: "+0.02 TON",
+    lb_me_prefix: "Your rank:",
+    lb_coming_soon: "Leaderboard data is not ready yet.",
   },
   tr: {
     tap: "TIKLA",
     upgrade_title: "Yükselt",
     upgrade_btn_prefix: "Vuruş Gücünü Artır (maliyet: ",
     wallet_title: "TON Cüzdan",
-    buy_ton: "TON ile coin satın al (beta)",
+    buy_ton: "TON ile coin satın al (yakında)",
     daily_tasks: "Günlük Görevler",
     daily_sub: "Ek coin ve TON kredisi için görevleri tamamla.",
     tasks_button: "Günlük Görevler",
     ton_credits_label: "TON Kredileri",
+    daily_ton_chest_title: "Günlük TON Sandığı",
+    daily_ton_chest_desc: "Kısa bir reklam izle, 0.1 TON kredisi kazan.",
+    watch_ad: "REKLAM İZLE",
+    go: "GİT",
+    check: "KONTROL",
+    claim: "AL",
+    invite_title: "Arkadaş Davet Et",
+    invite_desc: "Bir arkadaşını davet et. 200 coine ulaştığında sen +0.02 TON alırsın.",
+    invite_reward: "+0.02 TON",
+    lb_me_prefix: "Sıralaman:",
+    lb_coming_soon: "Liderlik tablosu verisi henüz hazır değil.",
   },
 };
 
 let currentLang = localStorage.getItem("tap_lang") || "en";
 
+// User state
 let userId = null;
 let userState = null;
 
-// Backend origin (Railway domain)
+// Backend origin
 const API_BASE = window.location.origin;
 
-// ---------------------------
 // AdsGram
-// ---------------------------
 let tapCounter = 0;
 const TAPS_PER_AD = 100;
 let lastAdTime = 0;
 const AD_INTERVAL_MS = 60_000;
 
-// AdsGram block IDs
+let RewardAdController = null;
+let InterstitialAdController = null;
 const ADSGRAM_REWARD_BLOCK_ID = "17996";
 const ADSGRAM_INTERSTITIAL_BLOCK_ID = "int-17995";
 
-let RewardController = null;
-let InterstitialController = null;
+// Task state
+const TASKS = [
+  {
+    id: "daily_ton_chest",
+    type: "reward",
+    iconType: "reward",
+    iconEmoji: "🎁",
+    titleKey: "daily_ton_chest_title",
+    descKey: "daily_ton_chest_desc",
+    rewardText: "+0.1 TON credits",
+  },
+  {
+    id: "invite_friends",
+    type: "invite",
+    iconType: "affiliate",
+    iconEmoji: "👥",
+    titleKey: "invite_title",
+    descKey: "invite_desc",
+    rewardTextKey: "invite_reward",
+  },
+  {
+    id: "affiliate_boinker",
+    type: "affiliate",
+    iconType: "affiliate",
+    iconEmoji: "🧠",
+    title: "Open Boinker",
+    description: "Open Boinker mini-app and explore.",
+    rewardText: "+1000 coins",
+    url: "https://t.me/boinker_bot?start=_tgr_TiWlA9A5YWY8",
+  },
+  {
+    id: "affiliate_dotcoin",
+    type: "affiliate",
+    iconType: "affiliate",
+    iconEmoji: "🟡",
+    title: "Visit DotCoin",
+    description: "Open DotCoin bot in Telegram.",
+    rewardText: "+1000 coins",
+    url: "https://t.me/dotcoin_bot",
+  },
+  {
+    id: "affiliate_bbqcoin",
+    type: "affiliate",
+    iconType: "affiliate",
+    iconEmoji: "🍖",
+    title: "Visit BBQCoin",
+    description: "Check out BBQCoin game.",
+    rewardText: "+1000 coins",
+    url: "https://t.me/BBQCoin_bot",
+  },
+];
 
+// client-side helper: taskId -> {went: bool}
+const localTaskState = {};
+
+// TON wallet (TonConnect)
+let tonConnectUI = null;
+let connectedWalletAddress = null;
+const TONCONNECT_MANIFEST_URL =
+  "https://ton-connect.github.io/demo-dapp-with-react-ui/tonconnect-manifest.json";
+
+// ---------------------------
+// AdsGram init & helpers
+// ---------------------------
 function initAdsgram() {
   if (!window.Adsgram) {
-    console.log("AdsGram SDK yok (sad.min.js yüklenemedi).");
+    console.log("AdsGram SDK yok (sad.min.js yüklü mü?)");
     return;
   }
-
   try {
-    RewardController = window.Adsgram.init({
+    RewardAdController = window.Adsgram.init({
       blockId: ADSGRAM_REWARD_BLOCK_ID,
     });
-    InterstitialController = window.Adsgram.init({
+    InterstitialAdController = window.Adsgram.init({
       blockId: ADSGRAM_INTERSTITIAL_BLOCK_ID,
     });
     console.log("AdsGram init OK");
@@ -74,35 +152,34 @@ function initAdsgram() {
 }
 
 function maybeShowInterstitial() {
-  if (!InterstitialController) return;
+  if (!InterstitialAdController) return;
   const now = Date.now();
   if (now - lastAdTime < AD_INTERVAL_MS) return;
 
   lastAdTime = now;
-  InterstitialController.show().catch((err) =>
-    console.error("Interstitial error:", err)
-  );
+  InterstitialAdController.show()
+    .then((res) => console.log("Interstitial OK:", res))
+    .catch((err) => console.error("Interstitial error:", err));
 }
 
 function showRewardAd() {
-  if (!RewardController) {
-    alert("Reklam şu anda hazır değil.");
+  if (!RewardAdController) {
+    alert("Ad not ready yet, please try again.");
     return;
   }
 
-  RewardController.show()
+  RewardAdController.show()
     .then((result) => {
       console.log("Reward ad result:", result);
-      // AdsGram result.done → kullanıcı videoyu tamamladı
       if (result && result.done && !result.error) {
-        return claimAdRewardFromBackend();
+        claimAdRewardFromBackend();
       } else {
-        alert("Ödül için reklamı tamamen izlemelisin.");
+        alert("To get reward, you need to watch the ad completely.");
       }
     })
     .catch((err) => {
       console.error("Reward ad error:", err);
-      alert("Reklam oynatılamadı, lütfen tekrar dene.");
+      alert("Error while playing ad.");
     });
 }
 
@@ -110,96 +187,36 @@ async function claimAdRewardFromBackend() {
   if (!userId) return;
 
   try {
-    const res = await fetch(API_BASE + "/api/reward/ad?telegram_id=" + userId, {
+    const res = await fetch(API_BASE + "/api/reward/ad", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      // Hem query hem JSON gönderiyoruz → backend ikisinden birini okuyabiliyor.
       body: JSON.stringify({ telegram_id: userId }),
     });
 
-    const data = await res.json();
-
     if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
       if (data.detail === "DAILY_LIMIT_REACHED") {
-        alert("Günlük video ödül limitine ulaştın (10/10).");
+        alert("You reached the daily ad limit.");
         return;
       }
-      throw new Error(data.detail || "Reward request failed");
+      throw new Error("Reward request failed");
     }
 
+    const data = await res.json();
     if (data.user) {
       userState = data.user;
       renderUser();
     }
 
-    const remaining = data.remaining ?? "?";
-    alert(`+${data.reward_ton.toFixed(2)} TON kazandın! Kalan hak: ${remaining}`);
+    alert("+0.1 TON credited!");
   } catch (err) {
     console.error("claimAdRewardFromBackend error:", err);
-    alert("Ödül alınırken hata oluştu.");
   }
 }
 
 // ---------------------------
-// Tasks config (Boinker tarzı, sade)
+// TON wallet (TonConnect)
 // ---------------------------
-const TASKS = [
-  {
-    id: "reward_video",
-    type: "reward",
-    iconType: "reward",
-    iconEmoji: "🎬",
-    title: "Daily TON Chest",
-    description: "Watch a video ad and earn extra TON credits.",
-    badge: "Daily",
-    rewardText: "+0.10 TON per ad (max 10/day)",
-  },
-  {
-    id: "turbo_task",
-    type: "turbo",
-    iconType: "affiliate",
-    iconEmoji: "⚡",
-    title: "Turbo x2 (10 min)",
-    description: "Activate 2x tap power for 10 minutes.",
-    badge: "x2 Boost",
-    rewardText: "2x Tap Power for 10 min",
-  },
-  {
-    id: "affiliate_boinker",
-    type: "affiliate",
-    iconType: "affiliate",
-    iconEmoji: "🧠",
-    title: "Open Boinker",
-    description: "Open Boinker mini-app and explore.",
-    badge: "Partner",
-    rewardText: "+1000 coins",
-    url: "https://t.me/boinker_bot?start=_tgr_TiWlA9A5YWY8",
-  },
-  {
-    id: "invite_friends",
-    type: "invite",
-    iconType: "affiliate",
-    iconEmoji: "👥",
-    title: "Invite Friends",
-    description: "Share your link. When friend reaches 200 coins, claim TON.",
-    badge: "Referral",
-    rewardText: "+0.02 TON",
-  },
-];
-
-const taskStatusMap = {};
-const taskUnlockTimers = {}; // id -> true: CHECK/CLAIM aktif
-
-// ---------------------------
-// TonConnect (şimdilik sadece UI),
-// gerçek on-chain ödemeyi sonra kuracağız.
-// ---------------------------
-let tonConnectUI = null;
-let connectedWalletAddress = null;
-
-const TONCONNECT_MANIFEST_URL =
-  "https://ton-connect.github.io/demo-dapp-with-react-ui/tonconnect-manifest.json";
-
 function initTonConnect() {
   try {
     const container = document.getElementById("ton-connect-button");
@@ -214,13 +231,14 @@ function initTonConnect() {
     });
 
     tonConnectUI.onStatusChange((wallet) => {
+      const addrEl = document.getElementById("wallet-address");
       if (wallet) {
         connectedWalletAddress = wallet.account.address;
-        const addrEl = document.getElementById("wallet-address");
-        if (addrEl) addrEl.textContent = "Wallet: " + connectedWalletAddress;
+        if (addrEl) {
+          addrEl.textContent = "Wallet: " + connectedWalletAddress;
+        }
       } else {
         connectedWalletAddress = null;
-        const addrEl = document.getElementById("wallet-address");
         if (addrEl) addrEl.textContent = "";
       }
     });
@@ -230,13 +248,8 @@ function initTonConnect() {
 }
 
 // ---------------------------
-// Upgrade cost + language UI
+// Language
 // ---------------------------
-function getUpgradeCost() {
-  if (!userState || typeof userState.tap_power !== "number") return 100;
-  return userState.tap_power * 100;
-}
-
 function initLanguageSelector() {
   const chips = document.querySelectorAll(".lang-chip");
   chips.forEach((chip) => {
@@ -247,18 +260,30 @@ function initLanguageSelector() {
       currentLang = lang;
       localStorage.setItem("tap_lang", currentLang);
       chips.forEach((c) =>
-        c.classList.toggle("active", c.dataset.lang === currentLang)
+        c.classList.toggle("active", c.dataset.lang === currentLang),
       );
       updateLangUI();
     });
   });
 }
 
+function getUpgradeCost() {
+  if (!userState || typeof userState.tap_power !== "number") return 100;
+  return (userState.tap_power || 1) * 100;
+}
+
 function updateLangUI() {
   const dict = LANG[currentLang] || LANG.en;
+
   const tapBtn = document.getElementById("tap-btn");
-  const upgradeTitle = document.querySelector(".upgrade-section h2");
+  const upgradeTitle = document.querySelector(".upgrade-section h2"); // maybe yok, sorun değil
   const upgradeBtn = document.getElementById("upgrade-tap-power-btn");
+  const tasksTitle = document.querySelector(".tasks-title");
+  const tasksSubtitle = document.querySelector(".tasks-subtitle");
+  const tasksOpenBtn = document.getElementById("open-tasks-btn");
+  const tonCreditsLabel = document.querySelector(
+    "#user-info p:nth-of-type(4)",
+  ); // eski kod kalıntısı olabilir, yoksa sorun değil
 
   const cost = getUpgradeCost();
 
@@ -266,10 +291,18 @@ function updateLangUI() {
   if (upgradeTitle) upgradeTitle.textContent = dict.upgrade_title;
   if (upgradeBtn)
     upgradeBtn.textContent = `${dict.upgrade_btn_prefix}${cost} coins)`;
+  if (tasksTitle) tasksTitle.textContent = dict.daily_tasks;
+  if (tasksSubtitle) tasksSubtitle.textContent = dict.daily_sub;
+  if (tasksOpenBtn) tasksOpenBtn.textContent = dict.tasks_button;
+  if (tonCreditsLabel)
+    tonCreditsLabel.firstChild.textContent = dict.ton_credits_label + ": ";
+
+  // Tasks içindeki info icon vs için yeniden çizim
+  renderTasksBoard();
 }
 
 // ---------------------------
-// User init + fetch
+// User init & fetch
 // ---------------------------
 async function initUser() {
   if (tg?.initDataUnsafe?.user?.id) {
@@ -286,7 +319,6 @@ async function initUser() {
 
   await fetchUser();
   await fetchTaskStatuses();
-  initInviteLink();
 }
 
 async function fetchUser() {
@@ -303,7 +335,7 @@ async function fetchUser() {
 }
 
 // ---------------------------
-// Tap / Upgrade
+// Tap & upgrade
 // ---------------------------
 async function tapOnce() {
   if (!userId) return;
@@ -314,7 +346,13 @@ async function tapOnce() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ telegram_id: userId, taps: 1 }),
     });
-    if (!res.ok) throw new Error("tap failed");
+
+    if (!res.ok) {
+      console.error("tap failed", res.status);
+      alert("Tap failed, please try again.");
+      return;
+    }
+
     const data = await res.json();
     if (data.user) {
       userState = data.user;
@@ -340,14 +378,17 @@ async function upgradeTapPower() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ telegram_id: userId }),
     });
-    const data = await res.json();
+
     if (!res.ok) {
-      if (data.detail === "NOT_ENOUGH_COINS") {
-        alert("Yetersiz coin!");
+      const errData = await res.json().catch(() => ({}));
+      if (errData.detail === "NOT_ENOUGH_COINS") {
+        alert("Not enough coins!");
         return;
       }
       throw new Error("upgrade failed");
     }
+
+    const data = await res.json();
     if (data.user) {
       userState = data.user;
       renderUser();
@@ -358,38 +399,54 @@ async function upgradeTapPower() {
 }
 
 // ---------------------------
-// User render
+// User render & level bar
 // ---------------------------
 function renderUser() {
   if (!userState) return;
 
-  const levelEl = document.getElementById("level-value");
+  const levelEl = document.getElementById("level");
   const coinsEl = document.getElementById("coins");
   const powerEl = document.getElementById("tap_power");
   const tonCreditsEl = document.getElementById("ton_credits");
-  const tonBalanceEl = document.getElementById("ton-balance");
-  const progressEl = document.getElementById("level-progress");
 
-  if (levelEl) levelEl.textContent = userState.level;
-  if (coinsEl) coinsEl.textContent = userState.coins;
-  if (powerEl) powerEl.textContent = userState.tap_power;
-  const ton = (userState.ton_credits ?? 0).toFixed(2);
-  if (tonCreditsEl) tonCreditsEl.textContent = ton;
-  if (tonBalanceEl) tonBalanceEl.textContent = ton;
-
-  // basit level progress: current / required (level*1000)
-  if (progressEl) {
-    const level = userState.level || 1;
-    const required = level * 1000;
-    const coins = userState.coins || 0;
-    const prevThreshold = (level - 1) * 1000;
-    const inLevel = Math.max(0, coins - prevThreshold);
-    const span = required - prevThreshold;
-    const pct = Math.max(0, Math.min(100, (inLevel / span) * 100));
-    progressEl.style.width = pct + "%";
+  if (levelEl) levelEl.textContent = userState.level ?? 1;
+  if (coinsEl) coinsEl.textContent = userState.coins ?? 0;
+  if (powerEl) powerEl.textContent = userState.tap_power ?? 1;
+  if (tonCreditsEl) {
+    const val = userState.ton_credits ?? 0;
+    tonCreditsEl.textContent = Number(val).toFixed(2);
   }
 
+  renderLevelProgress();
   updateLangUI();
+}
+
+function renderLevelProgress() {
+  const fillEl = document.getElementById("level-progress-fill");
+  const labelEl = document.getElementById("level-progress-label");
+  if (!fillEl || !labelEl || !userState) return;
+
+  const level = userState.level ?? 1;
+  const totalCoins = userState.total_coins ?? userState.coins ?? 0;
+
+  // Basit mantık: Level N için eşik = (N * 1000)
+  const currentLevelThreshold = level * 1000;
+  const nextLevelThreshold = (level + 1) * 1000;
+  let progress = 0;
+  if (totalCoins >= currentLevelThreshold) {
+    progress =
+      Math.min(
+        (totalCoins - currentLevelThreshold) /
+          (nextLevelThreshold - currentLevelThreshold || 1),
+        1,
+      ) * 100;
+  }
+
+  fillEl.style.width = `${progress}%`;
+  labelEl.textContent = `Next level: ${Math.max(
+    0,
+    nextLevelThreshold - totalCoins,
+  )} coins`;
 }
 
 // ---------------------------
@@ -399,12 +456,14 @@ async function fetchTaskStatuses() {
   if (!userId) return;
   try {
     const res = await fetch(
-      API_BASE + "/api/tasks/status?telegram_id=" + userId
+      API_BASE + "/api/tasks/status?telegram_id=" + userId,
     );
     if (!res.ok) throw new Error("tasks/status failed");
     const data = await res.json();
     data.forEach((t) => {
-      taskStatusMap[t.task_id] = t.status;
+      // t: {task_id, status}
+      localTaskState[t.task_id] = localTaskState[t.task_id] || {};
+      localTaskState[t.task_id].status = t.status;
     });
     renderTasksBoard();
   } catch (err) {
@@ -417,8 +476,11 @@ function renderTasksBoard() {
   if (!container) return;
   container.innerHTML = "";
 
+  const dict = LANG[currentLang] || LANG.en;
+
   TASKS.forEach((task) => {
-    const status = taskStatusMap[task.id] || "pending";
+    const state = localTaskState[task.id] || {};
+    const status = state.status || "pending";
 
     const card = document.createElement("div");
     card.className = "task-card";
@@ -433,24 +495,35 @@ function renderTasksBoard() {
     const titleRow = document.createElement("div");
     titleRow.className = "task-title-row";
 
-    const titleEl = document.createElement("p");
+    const titleEl = document.createElement("div");
     titleEl.className = "task-title";
-    titleEl.textContent = task.title;
+    if (task.titleKey) {
+      titleEl.textContent = dict[task.titleKey];
+    } else {
+      titleEl.textContent = task.title;
+    }
 
-    const infoBadge = document.createElement("span");
+    const infoBadge = document.createElement("div");
     infoBadge.className = "task-info-badge";
-    infoBadge.textContent = task.badge || "!";
-
+    infoBadge.textContent = "!";
     titleRow.appendChild(titleEl);
     titleRow.appendChild(infoBadge);
 
     const descEl = document.createElement("p");
     descEl.className = "task-desc";
-    descEl.textContent = task.description;
+    if (task.descKey) {
+      descEl.textContent = dict[task.descKey];
+    } else {
+      descEl.textContent = task.description;
+    }
 
     const rewardEl = document.createElement("div");
     rewardEl.className = "task-reward";
-    rewardEl.textContent = task.rewardText;
+    if (task.rewardTextKey) {
+      rewardEl.textContent = dict[task.rewardTextKey];
+    } else {
+      rewardEl.textContent = task.rewardText;
+    }
 
     main.appendChild(titleRow);
     main.appendChild(descEl);
@@ -459,34 +532,57 @@ function renderTasksBoard() {
     const actions = document.createElement("div");
     actions.className = "task-actions";
 
-    if (task.id === "reward_video") {
+    if (task.type === "reward") {
       const btn = document.createElement("button");
       btn.className = "task-cta-btn";
-      btn.textContent = "WATCH AD";
+      btn.textContent = dict.watch_ad;
       btn.addEventListener("click", () => showRewardAd());
       actions.appendChild(btn);
-    } else {
+    } else if (task.type === "invite") {
+      // Invite: GO → invite modal, CHECK/CLAIM backend
       const goBtn = document.createElement("button");
       goBtn.className = "task-cta-btn";
-      goBtn.textContent = "GO";
+      goBtn.textContent = dict.go;
       goBtn.disabled = status === "claimed";
       goBtn.addEventListener("click", () => handleTaskClick(task, "go"));
-      actions.appendChild(goBtn);
 
       const checkBtn = document.createElement("button");
       checkBtn.className = "task-cta-btn";
-      checkBtn.textContent = "CHECK";
-      // GO'ya basılıp birkaç saniye geçmeden CHECK aktif olmasın
-      const locked = !taskUnlockTimers[task.id];
-      checkBtn.disabled = locked || status === "claimed";
+      checkBtn.textContent = dict.check;
+      checkBtn.disabled = status === "claimed";
       checkBtn.addEventListener("click", () => handleTaskClick(task, "check"));
-      actions.appendChild(checkBtn);
 
       const claimBtn = document.createElement("button");
       claimBtn.className = "task-cta-btn";
-      claimBtn.textContent = "CLAIM";
+      claimBtn.textContent = dict.claim;
       claimBtn.disabled = status !== "checked";
       claimBtn.addEventListener("click", () => handleTaskClick(task, "claim"));
+
+      actions.appendChild(goBtn);
+      actions.appendChild(checkBtn);
+      actions.appendChild(claimBtn);
+    } else {
+      // Affiliate tasks
+      const goBtn = document.createElement("button");
+      goBtn.className = "task-cta-btn";
+      goBtn.textContent = dict.go;
+      goBtn.disabled = status === "claimed";
+      goBtn.addEventListener("click", () => handleTaskClick(task, "go"));
+
+      const checkBtn = document.createElement("button");
+      checkBtn.className = "task-cta-btn";
+      checkBtn.textContent = dict.check;
+      checkBtn.disabled = status === "claimed";
+      checkBtn.addEventListener("click", () => handleTaskClick(task, "check"));
+
+      const claimBtn = document.createElement("button");
+      claimBtn.className = "task-cta-btn";
+      claimBtn.textContent = dict.claim;
+      claimBtn.disabled = status !== "checked";
+      claimBtn.addEventListener("click", () => handleTaskClick(task, "claim"));
+
+      actions.appendChild(goBtn);
+      actions.appendChild(checkBtn);
       actions.appendChild(claimBtn);
     }
 
@@ -498,36 +594,66 @@ function renderTasksBoard() {
 }
 
 function handleTaskClick(task, action) {
-  if (task.id === "reward_video") {
+  const state = (localTaskState[task.id] = localTaskState[task.id] || {});
+  const status = state.status || "pending";
+
+  if (action === "claim") {
+    // Frontend guard: önce CHECK olmalı
+    if (status !== "checked") {
+      alert("You must CHECK first before claiming.");
+      return;
+    }
+  }
+
+  if (task.type === "reward") {
     if (action === "go") showRewardAd();
     return;
   }
 
+  if (task.type === "invite") {
+    if (action === "go") {
+      openInviteModal();
+      state.went = true;
+      return;
+    }
+    if (action === "check") {
+      if (!state.went) {
+        alert("You need to open the invite link first (GO).");
+        return;
+      }
+      checkTask(task.id);
+      return;
+    }
+    if (action === "claim") {
+      claimTask(task.id);
+      return;
+    }
+  }
+
   if (task.type === "affiliate") {
-    if (action === "go") openAffiliate(task.url, task.id);
-    else if (action === "check") checkTask(task.id);
-    else if (action === "claim") claimTask(task.id);
-  } else if (task.type === "turbo") {
-    if (action === "go") startTurboTask(task.id);
-    else if (action === "check") checkTask(task.id);
-    else if (action === "claim") claimTask(task.id);
-  } else if (task.type === "invite") {
-    if (action === "go") openInviteModal();
-    else if (action === "check") checkTask(task.id);
-    else if (action === "claim") claimTask(task.id);
+    if (action === "go") {
+      openAffiliate(task.url);
+      state.went = true;
+      return;
+    }
+    if (action === "check") {
+      if (!state.went) {
+        alert("Open the target first (GO), then CHECK.");
+        return;
+      }
+      checkTask(task.id);
+      return;
+    }
+    if (action === "claim") {
+      claimTask(task.id);
+      return;
+    }
   }
 }
 
-function openAffiliate(url, taskId) {
+function openAffiliate(url) {
   if (tg?.openTelegramLink) tg.openTelegramLink(url);
   else window.open(url, "_blank");
-
-  // 5 saniye sonra CHECK aktif olsun
-  taskUnlockTimers[taskId] = false;
-  setTimeout(() => {
-    taskUnlockTimers[taskId] = true;
-    renderTasksBoard();
-  }, 5000);
 }
 
 async function checkTask(taskId) {
@@ -540,9 +666,10 @@ async function checkTask(taskId) {
     });
     if (!res.ok) throw new Error("checkTask failed");
     const data = await res.json();
-    taskStatusMap[taskId] = data.task_status;
+    localTaskState[taskId] = localTaskState[taskId] || {};
+    localTaskState[taskId].status = data.task_status;
     renderTasksBoard();
-    alert("Görev kontrol edildi, şimdi CLAIM deneyebilirsin.");
+    alert("Task checked, now you can CLAIM.");
   } catch (err) {
     console.error("checkTask error:", err);
   }
@@ -556,110 +683,125 @@ async function claimTask(taskId) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ telegram_id: userId, task_id: taskId }),
     });
-    const data = await res.json();
     if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
       if (data.detail === "TASK_NOT_READY") {
-        alert("Önce CHECK yapmalısın.");
+        alert("You must CHECK first.");
         return;
       }
       throw new Error("claimTask failed");
     }
-    taskStatusMap[taskId] = data.task_status;
+    const data = await res.json();
+    localTaskState[taskId] = localTaskState[taskId] || {};
+    localTaskState[taskId].status = data.task_status;
     if (data.user) {
       userState = data.user;
       renderUser();
     }
     renderTasksBoard();
-    if (data.reward_coins) {
-      alert(`Görev tamamlandı, +${data.reward_coins} coin kazandın!`);
-    } else if (data.reward_ton) {
-      alert(`Görev tamamlandı, +${data.reward_ton.toFixed(2)} TON kazandın!`);
-    } else {
-      alert("Görev tamamlandı!");
-    }
+    alert(`Task completed, +${data.reward_coins} coins gained!`);
   } catch (err) {
     console.error("claimTask error:", err);
   }
 }
 
-// Turbo sadece görevden gelsin
-async function startTurboTask(taskId) {
-  if (!userId) return;
-  try {
-    const res = await fetch(API_BASE + "/api/turbo/activate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ telegram_id: userId }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      if (data.detail === "DAILY_TURBO_LIMIT") {
-        alert("Günlük Turbo limitine ulaştın.");
-        return;
-      }
-      throw new Error("turbo failed");
-    }
-    if (data.user) {
-      userState = data.user;
-      renderUser();
-    }
-    alert("Turbo x2 etkin! 10 dakika boyunca tap gücün 2x.");
-  } catch (err) {
-    console.error("startTurboTask error:", err);
-  }
-}
-
 // ---------------------------
-// Invite friends
+// Invite modal
 // ---------------------------
-function initInviteLink() {
-  const input = document.getElementById("invite-link-input");
-  if (!input || !userId) return;
-
-  // Basit referans linki
-  const url = `https://t.me/TaptoEarnTonBot/TapToEarnTonBot?start=ref_${userId}`;
-  input.value = url;
-}
-
 function openInviteModal() {
+  const modal = document.getElementById("invite-modal");
+  if (!modal) return;
+
+  const input = document.getElementById("invite-link-input");
+  const dict = LANG[currentLang] || LANG.en;
+
+  const baseLink = "https://t.me/TaptoEarnTonBot";
+  const link = userId
+    ? `${baseLink}?start=ref_${userId}`
+    : `${baseLink}?start=ref_demo`;
+
+  if (input) input.value = link;
+
   openModal("invite-modal");
 }
 
-function setupInviteHandlers() {
-  const copyBtn = document.getElementById("invite-copy-btn");
-  const shareBtn = document.getElementById("invite-share-btn");
+function initInviteCopyButton() {
+  const btn = document.getElementById("copy-invite-link-btn");
   const input = document.getElementById("invite-link-input");
+  if (!btn || !input) return;
 
-  if (copyBtn && input) {
-    copyBtn.addEventListener("click", () => {
+  btn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(input.value);
+      alert("Copied.");
+    } catch {
       input.select();
       document.execCommand("copy");
-      alert("Link kopyalandı!");
-    });
-  }
+      alert("Copied.");
+    }
+  });
+}
 
-  if (shareBtn && input) {
-    shareBtn.addEventListener("click", () => {
-      const text = "Tap to Earn TON oyununa katıl! " + input.value;
-      if (tg?.openTelegramLink) {
-        tg.openTelegramLink(
-          "https://t.me/share/url?url=" +
-            encodeURIComponent(input.value) +
-            "&text=" +
-            encodeURIComponent(text)
-        );
-      } else if (navigator.share) {
-        navigator.share({ text, url: input.value }).catch(() => {});
-      } else {
-        window.open(
-          "https://t.me/share/url?url=" +
-            encodeURIComponent(input.value) +
-            "&text=" +
-            encodeURIComponent(text),
-          "_blank"
-        );
-      }
+// ---------------------------
+// Leaderboard (şimdilik backend /api/leaderboard varsa kullanır,
+// yoksa “coming soon” mesajı gösterir)
+// ---------------------------
+async function openLeaderboard() {
+  const modalId = "leaderboard-modal";
+  openModal(modalId);
+
+  const listEl = document.getElementById("leaderboard-list");
+  const meEl = document.getElementById("leaderboard-me");
+  if (!listEl || !meEl) return;
+  listEl.innerHTML = "";
+  meEl.innerHTML = "";
+
+  const dict = LANG[currentLang] || LANG.en;
+
+  try {
+    const url =
+      API_BASE +
+      "/api/leaderboard" +
+      (userId ? `?telegram_id=${encodeURIComponent(userId)}` : "");
+    const res = await fetch(url);
+    if (!res.ok) {
+      listEl.innerHTML = `<p class="info-text">${dict.lb_coming_soon}</p>`;
+      return;
+    }
+    const data = await res.json();
+    const top = data.top || [];
+    const meRank = data.me_rank || null;
+
+    top.forEach((u, idx) => {
+      const row = document.createElement("div");
+      row.className = "lb-row";
+
+      const rank = document.createElement("div");
+      rank.className = "lb-rank";
+      rank.textContent = `#${idx + 1}`;
+
+      const name = document.createElement("div");
+      name.className = "lb-name";
+      name.textContent = u.display_name || `User ${u.telegram_id}`;
+
+      const score = document.createElement("div");
+      score.className = "lb-score";
+      score.textContent = `${u.coins ?? 0} coins`;
+
+      row.appendChild(rank);
+      row.appendChild(name);
+      row.appendChild(score);
+      listEl.appendChild(row);
     });
+
+    if (meRank) {
+      meEl.textContent = `${dict.lb_me_prefix} #${meRank}`;
+    } else {
+      meEl.textContent = dict.lb_coming_soon;
+    }
+  } catch (err) {
+    console.error("leaderboard error:", err);
+    listEl.innerHTML = `<p class="info-text">${dict.lb_coming_soon}</p>`;
   }
 }
 
@@ -690,26 +832,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const tapBtn = document.getElementById("tap-btn");
   const upgradeBtn = document.getElementById("upgrade-tap-power-btn");
-  const dailyChestBtn = document.getElementById("daily-chest-btn");
+  const walletOpenBtn = document.getElementById("wallet-open-btn");
   const openTasksBtn = document.getElementById("open-tasks-btn");
-  const inviteOpenBtn = document.getElementById("invite-open-btn");
-  const leaderboardBtn = document.getElementById("leaderboard-btn");
+  const openLeaderboardBtn = document.getElementById(
+    "open-leaderboard-btn",
+  );
   const closeButtons = document.querySelectorAll(".overlay-close");
 
   if (tapBtn) tapBtn.addEventListener("click", tapOnce);
   if (upgradeBtn) upgradeBtn.addEventListener("click", upgradeTapPower);
-  if (dailyChestBtn) dailyChestBtn.addEventListener("click", showRewardAd);
+  if (walletOpenBtn)
+    walletOpenBtn.addEventListener("click", () => openModal("wallet-modal"));
   if (openTasksBtn)
     openTasksBtn.addEventListener("click", () => {
       openModal("tasks-modal");
       renderTasksBoard();
     });
-  if (inviteOpenBtn)
-    inviteOpenBtn.addEventListener("click", () => openInviteModal());
-  if (leaderboardBtn)
-    leaderboardBtn.addEventListener("click", () =>
-      alert("Leaderboard çok yakında.")
-    );
+  if (openLeaderboardBtn)
+    openLeaderboardBtn.addEventListener("click", openLeaderboard);
 
   closeButtons.forEach((btn) => {
     const target = btn.getAttribute("data-close");
@@ -721,5 +861,5 @@ document.addEventListener("DOMContentLoaded", () => {
   initUser();
   initTonConnect();
   initAdsgram();
-  setupInviteHandlers();
+  initInviteCopyButton();
 });
