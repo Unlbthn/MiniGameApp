@@ -42,7 +42,8 @@ const LANG = {
     check: "KONTROL",
     claim: "AL",
     invite_title: "Arkadaş Davet Et",
-    invite_desc: "Bir arkadaşını davet et. 200 coine ulaştığında sen +0.02 TON alırsın.",
+    invite_desc:
+      "Bir arkadaşını davet et. 200 coine ulaştığında sen +0.02 TON alırsın.",
     invite_reward: "+0.02 TON",
     lb_me_prefix: "Sıralaman:",
     lb_coming_soon: "Liderlik tablosu verisi henüz hazır değil.",
@@ -276,14 +277,14 @@ function updateLangUI() {
   const dict = LANG[currentLang] || LANG.en;
 
   const tapBtn = document.getElementById("tap-btn");
-  const upgradeTitle = document.querySelector(".upgrade-section h2"); // maybe yok, sorun değil
+  const upgradeTitle = document.querySelector(".upgrade-section h2");
   const upgradeBtn = document.getElementById("upgrade-tap-power-btn");
   const tasksTitle = document.querySelector(".tasks-title");
   const tasksSubtitle = document.querySelector(".tasks-subtitle");
   const tasksOpenBtn = document.getElementById("open-tasks-btn");
   const tonCreditsLabel = document.querySelector(
     "#user-info p:nth-of-type(4)",
-  ); // eski kod kalıntısı olabilir, yoksa sorun değil
+  );
 
   const cost = getUpgradeCost();
 
@@ -297,7 +298,6 @@ function updateLangUI() {
   if (tonCreditsLabel)
     tonCreditsLabel.firstChild.textContent = dict.ton_credits_label + ": ";
 
-  // Tasks içindeki info icon vs için yeniden çizim
   renderTasksBoard();
 }
 
@@ -429,7 +429,6 @@ function renderLevelProgress() {
   const level = userState.level ?? 1;
   const totalCoins = userState.total_coins ?? userState.coins ?? 0;
 
-  // Basit mantık: Level N için eşik = (N * 1000)
   const currentLevelThreshold = level * 1000;
   const nextLevelThreshold = (level + 1) * 1000;
   let progress = 0;
@@ -461,7 +460,6 @@ async function fetchTaskStatuses() {
     if (!res.ok) throw new Error("tasks/status failed");
     const data = await res.json();
     data.forEach((t) => {
-      // t: {task_id, status}
       localTaskState[t.task_id] = localTaskState[t.task_id] || {};
       localTaskState[t.task_id].status = t.status;
     });
@@ -539,7 +537,6 @@ function renderTasksBoard() {
       btn.addEventListener("click", () => showRewardAd());
       actions.appendChild(btn);
     } else if (task.type === "invite") {
-      // Invite: GO → invite modal, CHECK/CLAIM backend
       const goBtn = document.createElement("button");
       goBtn.className = "task-cta-btn";
       goBtn.textContent = dict.go;
@@ -556,13 +553,14 @@ function renderTasksBoard() {
       claimBtn.className = "task-cta-btn";
       claimBtn.textContent = dict.claim;
       claimBtn.disabled = status !== "checked";
-      claimBtn.addEventListener("click", () => handleTaskClick(task, "claim"));
+      claimBtn.addEventListener("click", () =>
+        handleTaskClick(task, "claim"),
+      );
 
       actions.appendChild(goBtn);
       actions.appendChild(checkBtn);
       actions.appendChild(claimBtn);
     } else {
-      // Affiliate tasks
       const goBtn = document.createElement("button");
       goBtn.className = "task-cta-btn";
       goBtn.textContent = dict.go;
@@ -579,7 +577,9 @@ function renderTasksBoard() {
       claimBtn.className = "task-cta-btn";
       claimBtn.textContent = dict.claim;
       claimBtn.disabled = status !== "checked";
-      claimBtn.addEventListener("click", () => handleTaskClick(task, "claim"));
+      claimBtn.addEventListener("click", () =>
+        handleTaskClick(task, "claim"),
+      );
 
       actions.appendChild(goBtn);
       actions.appendChild(checkBtn);
@@ -598,7 +598,6 @@ function handleTaskClick(task, action) {
   const status = state.status || "pending";
 
   if (action === "claim") {
-    // Frontend guard: önce CHECK olmalı
     if (status !== "checked") {
       alert("You must CHECK first before claiming.");
       return;
@@ -713,7 +712,6 @@ function openInviteModal() {
   if (!modal) return;
 
   const input = document.getElementById("invite-link-input");
-  const dict = LANG[currentLang] || LANG.en;
 
   const baseLink = "https://t.me/TaptoEarnTonBot";
   const link = userId
@@ -743,8 +741,7 @@ function initInviteCopyButton() {
 }
 
 // ---------------------------
-// Leaderboard (şimdilik backend /api/leaderboard varsa kullanır,
-// yoksa “coming soon” mesajı gösterir)
+// Leaderboard
 // ---------------------------
 async function openLeaderboard() {
   const modalId = "leaderboard-modal";
@@ -834,9 +831,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const upgradeBtn = document.getElementById("upgrade-tap-power-btn");
   const walletOpenBtn = document.getElementById("wallet-open-btn");
   const openTasksBtn = document.getElementById("open-tasks-btn");
-  const openLeaderboardBtn = document.getElementById(
-    "open-leaderboard-btn",
-  );
+  const openLeaderboardBtn = document.getElementById("open-leaderboard-btn");
   const closeButtons = document.querySelectorAll(".overlay-close");
 
   if (tapBtn) tapBtn.addEventListener("click", tapOnce);
