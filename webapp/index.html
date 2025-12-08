@@ -1,100 +1,88 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tap to Earn TON</title>
-    <link rel="stylesheet" href="/static/styles.css" />
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://unpkg.com/@tonconnect/ui@2.0.0/dist/tonconnect-ui.min.js"></script>
-    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+  <meta charset="UTF-8" />
+  <title>DailyQuoteBot</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Premium fontlar -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./styles.css" />
 </head>
-
 <body>
-
-    <!-- TOP BAR -->
-    <div class="top-bar">
-        <div id="wallet-open-btn" class="wallet-icon">💳</div>
-        <div class="ton-pill">
-            <img src="https://cryptologos.cc/logos/toncoin-ton-logo.png" class="ton-logo">
-            <span id="ton-pill-balance">0.00</span>
+  <div id="app" class="app">
+    <header class="app-header">
+      <div class="logo-wrap">
+        <div class="logo-mark">❝</div>
+        <div class="logo-text">
+          <div id="app-title" class="logo-title">DailyQuoteBot</div>
+          <div class="logo-tagline">Premium daily motivation</div>
         </div>
-        <div class="lang-switch">
-            <span class="lang-chip" data-lang="en">🇬🇧</span>
-            <span class="lang-chip" data-lang="tr">🇹🇷</span>
+      </div>
+      <button class="menu-button" id="menu-button">⋮</button>
+    </header>
+
+    <div class="tag-row">
+      <span id="topic-motivation" class="topic-pill active">Motivasyon</span>
+      <span id="topic-love" class="topic-pill">Aşk</span>
+      <span id="topic-sports" class="topic-pill">Spor</span>
+    </div>
+
+    <main>
+      <section class="quote-section">
+        <div class="quote-card">
+          <div class="quote-mark">“</div>
+          <div id="quote-text" class="quote-text">Yükleniyor...</div>
         </div>
+      </section>
+
+      <section class="main-buttons">
+        <button id="btn-new-quote" class="btn btn-primary-main">
+          Yeni söz aç
+        </button>
+        <button id="btn-reward" class="btn btn-secondary">
+          🎁 Ek söz aç (Reklam izle)
+        </button>
+      </section>
+
+      <section class="share-buttons">
+        <button id="btn-share-whatsapp" class="btn btn-ghost">
+          WhatsApp'ta paylaş
+        </button>
+        <button id="btn-share-telegram" class="btn btn-ghost">
+          Telegram'da paylaş
+        </button>
+      </section>
+
+      <section class="bottom-section">
+        <pre id="tasks-info" class="tasks-text">
+Görevler yükleniyor...
+        </pre>
+      </section>
+    </main>
+
+    <div class="dropdown-menu" id="dropdown-menu">
+      <div class="dropdown-item" data-action="change-topic">
+        Konu değiştir
+      </div>
+      <div class="dropdown-item" data-action="add-favorite">
+        Favorilere ekle
+      </div>
+      <div class="dropdown-item" data-action="show-favorites">
+        Favoriler
+      </div>
+      <div class="dropdown-item" data-action="start-test">
+        Bugünün mini testi
+      </div>
+      <div class="dropdown-item" data-action="change-language">
+        Dil değiştir (TR/EN)
+      </div>
     </div>
+  </div>
 
-    <!-- USER PANEL -->
-    <div id="user-info" class="user-panel">
-        <p>Level <span id="level">1</span></p>
-        <div class="level-bar">
-            <div id="level-bar-fill"></div>
-        </div>
-
-        <p>Coins: <span id="coins">0</span></p>
-        <p>Tap Power: <span id="tap_power">1</span></p>
-        <p>TON Credits: <span id="ton_credits">0</span></p>
-    </div>
-
-    <!-- TAP BUTTON -->
-    <button id="tap-btn" class="tap-btn">TAP</button>
-
-    <!-- UPGRADE -->
-    <div class="upgrade-section">
-        <h2>Upgrade</h2>
-        <button id="upgrade-tap-power-btn" class="upgrade-btn">Upgrade</button>
-    </div>
-
-    <!-- DAILY CHEST + TASKS -->
-    <div class="menu-buttons">
-        <button id="daily-chest-btn" class="menu-btn">Daily TON Chest</button>
-        <button id="open-tasks-btn" class="menu-btn">Daily Tasks</button>
-        <button id="invite-btn" class="menu-btn">Invite Friends</button>
-    </div>
-
-    <!-- WALLET MODAL -->
-    <div id="wallet-modal" class="overlay hidden">
-        <div class="overlay-content">
-            <div class="overlay-header">
-                <h2 class="wallet-title">TON Wallet</h2>
-                <button class="overlay-close" data-close="wallet-modal">✖</button>
-            </div>
-            <div id="ton-connect-button"></div>
-            <p id="wallet-address"></p>
-        </div>
-    </div>
-
-    <!-- TASKS MODAL -->
-    <div id="tasks-modal" class="overlay hidden">
-        <div class="overlay-content tasks-modal-content">
-            <div class="overlay-header">
-                <h2 class="tasks-title">Daily Tasks</h2>
-                <button class="overlay-close" data-close="tasks-modal">✖</button>
-            </div>
-
-            <p class="tasks-subtitle">Complete tasks to earn coins and TON</p>
-
-            <div id="tasks-list"></div>
-        </div>
-    </div>
-
-    <!-- INVITE MODAL -->
-    <div id="invite-modal" class="overlay hidden">
-        <div class="overlay-content">
-            <div class="overlay-header">
-                <h2>Invite Friends</h2>
-                <button class="overlay-close" data-close="invite-modal">✖</button>
-            </div>
-
-            <p>Share your link:</p>
-            <textarea id="invite-link" readonly></textarea>
-
-            <button id="copy-invite-link" class="menu-btn">Copy</button>
-        </div>
-    </div>
-
-    <script src="/static/app.js"></script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
-e
