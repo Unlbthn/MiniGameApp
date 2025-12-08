@@ -1,41 +1,35 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
+# backend/db.py
 
-# ---------------------------
-# DATABASE URL
-# ---------------------------
-# Railway / Render otomatik DATABASE_URL değişkeni verir
 import os
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./game.db")
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
 
-# ---------------------------
-# Engine
-# ---------------------------
-if DATABASE_URL.startswith("sqlite"):
-    engine = create_engine(
-        DATABASE_URL,
-        connect_args={"check_same_thread": False}
-    )
-else:
-    engine = create_engine(DATABASE_URL)
+# --------------------------------------------------------------------
+# DATABASE_URL
+# --------------------------------------------------------------------
+# Railway'de genelde DATABASE_URL bir Postgres connection string’i oluyor.
+# Lokal geliştirmede ise varsayılan olarak SQLite kullanıyoruz.
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./taptoearnton.db")
 
+# Eski format "postgres://" gelirse SQLAlchemy için düzelt
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# ---------------------------
-# SessionLocal
-# ---------------------------
+# SQLite ise extra connect_args gerekiyor, diğerlerinde gerek yok
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# ---------------------------
-# Base
-# ---------------------------
 Base = declarative_base()
 
 
-# ---------------------------
-# Dependency (FastAPI)
-# ---------------------------
 def get_db():
+    """
+    FastAPI dependency:
+    Her request için ayrı bir DB session açar, iş bitince kapatır.
+    """
     db = SessionLocal()
     try:
         yield db
