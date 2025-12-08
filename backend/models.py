@@ -1,56 +1,67 @@
-from sqlalchemy import Column, Integer, Float, String, Boolean, Date, DateTime
-from sqlalchemy.orm import declarative_base
+# backend/models.py
+
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 from datetime import datetime
 
-Base = declarative_base()
+from .db import Base
 
 
+# --------------------------------------------------------------------
+# USER MODEL
+# --------------------------------------------------------------------
 class User(Base):
     __tablename__ = "users"
 
-    telegram_id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
+    telegram_id = Column(String, unique=True, index=True, nullable=False)
 
-    # Game stats
     coins = Column(Integer, default=0)
-    total_coins = Column(Integer, default=0)
-
     level = Column(Integer, default=1)
-    xp = Column(Integer, default=0)               # NEW: XP bar için
-    next_level_xp = Column(Integer, default=1000) # NEW: 1→2:1000, 2→3:2000...
-
     tap_power = Column(Integer, default=1)
 
-    # TON earnings
-    ton_credits = Column(Float, default=0.0)
+    ton_balance = Column(Float, default=0.0)
 
-    # Turbo boost
-    turbo_end = Column(DateTime, nullable=True)
-    daily_turbo_count = Column(Integer, default=0)
-    last_turbo_date = Column(Date, nullable=True)
+    # TURBO BOOST (kaldırıldı ama gelecekte gerekirse kalsın)
+    turbo_active = Column(Boolean, default=False)
+    turbo_until = Column(DateTime, nullable=True)
 
-    # NEW → Extra Coins Boost (x2 / x3 / x5)
-    boost_end = Column(DateTime, nullable=True)
-    current_boost = Column(Integer, default=1)  # 1=no boost, 2=x2, 3=x3, etc.
-    daily_boost_count = Column(Integer, default=0)
-    last_boost_date = Column(Date, nullable=True)
+    # REFERRAL
+    referral_code = Column(String, unique=True)
+    referred_by = Column(String, ForeignKey("users.referral_code"), nullable=True)
 
-    # Reward ads
-    daily_ads_count = Column(Integer, default=0)
-    last_ad_date = Column(Date, nullable=True)
+    # DAILY CHEST limit
+    daily_chest_used = Column(Integer, default=0)
 
-    # Referral system
-    referrals = Column(Integer, default=0)
-    referred_by = Column(Integer, nullable=True)
+    # DAILY WATCHED ADS FOR CHEST
+    last_chest_reset = Column(DateTime, default=datetime.utcnow)
 
-    # NEW Anti-Cheat: last tap timestamp
-    last_tap = Column(DateTime, nullable=True)
-    tap_streak = Column(Integer, default=0)   # çok hızlı farm’ı sınırlamak için
+    # Tap cooldown
+    last_tap_time = Column(DateTime, default=datetime.utcnow)
+
+    # Leaderboard caching (opsiyonel)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+    tasks = relationship("TaskStatus", back_populates="user")
 
 
+# --------------------------------------------------------------------
+# TASK STATUS — daily tasks / invite / visit / claim tracking
+# --------------------------------------------------------------------
 class TaskStatus(Base):
     __tablename__ = "task_status"
 
     id = Column(Integer, primary_key=True, index=True)
-    telegram_id = Column(Integer, index=True)
-    task_id = Column(String)
-    status = Column(String)  # pending / checked / claimed
+    user_id = Column(Integer, ForeignKey("users.id"))
+
+    task_key = Column(String, index=True)       # example: "daily_chest", "visit_website", "invite_friend"
+    completed = Column(Boolean, default=False)
+    claimed = Column(Boolean, default=False)
+
+    # Extra logic (visit link, click check, etc.)
+    progress = Column(Integer, default=0)
+    required = Column(Integer, default=1)
+
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="tasks")
