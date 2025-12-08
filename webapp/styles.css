@@ -1,285 +1,546 @@
+/* ==========
+   GLOBAL
+   ========== */
+
 *,
 *::before,
 *::after {
   box-sizing: border-box;
-}
-
-html, body {
   margin: 0;
   padding: 0;
 }
 
+html,
 body {
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #000000;
-  color: #e5e5e5;
+  height: 100%;
 }
 
-.app {
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top, #101826 0, #050814 55%, #02030a 100%);
+  color: #f5f7ff;
+}
+
+/* Telegram mini-app içi */
+.app-root {
   min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 16px;
-  background: radial-gradient(circle at top, #1e1e1e 0, #000000 55%);
-  color: #e5e5e5;
 }
 
-/* HEADER / LOGO */
+/* Ana kart */
+.game-card {
+  width: 100%;
+  max-width: 420px;
+  background: radial-gradient(circle at top, #101d33 0, #050814 60%);
+  border-radius: 24px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
+  padding: 18px 18px 20px;
+  border: 1px solid rgba(120, 170, 255, 0.18);
+}
 
-.app-header {
+/* ==========
+   TOP BAR
+   ========== */
+
+.top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
-.logo-wrap {
-  display: flex;
+/* Sol menü butonu */
+.menu-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(8, 16, 40, 0.9);
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  cursor: pointer;
 }
 
-.logo-mark {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #F2D16B 0%, #D4AF37 100%);
+.menu-btn span {
+  display: block;
+  width: 16px;
+  height: 2px;
+  border-radius: 999px;
+  background: #9bb8ff;
+  box-shadow: 0 5px 0 #9bb8ff, 0 -5px 0 #9bb8ff;
+}
+
+/* TON balance pill */
+.ton-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: radial-gradient(circle at top, #1768ff 0, #0b2f74 60%, #041231 100%);
+  box-shadow: 0 0 16px rgba(34, 142, 255, 0.7);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ton-pill-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #1ea0ff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  color: #000000;
-  box-shadow: 0 0 18px rgba(212, 175, 55, 0.6);
-}
-
-.logo-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.logo-title {
-  font-family: "Playfair Display", serif;
-  font-size: 18px;
-  letter-spacing: 0.03em;
-  color: #F2D16B;
-}
-
-.logo-tagline {
   font-size: 11px;
-  color: #969696;
 }
 
-.menu-button {
-  background: transparent;
-  border: none;
-  color: #e5e5e5;
-  font-size: 22px;
-  cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 999px;
-  transition: background 0.15s ease, transform 0.1s ease;
+.ton-pill-label {
+  opacity: 0.8;
 }
 
-.menu-button:hover {
-  background: #111111;
-  transform: translateY(-1px);
+.ton-pill-value {
+  font-weight: 700;
 }
 
-/* TOPIC PILL’LER */
-
-.tag-row {
+/* Dil seçim */
+.lang-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
   margin-top: 4px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+}
+
+.lang-chip {
+  border-radius: 999px;
+  border: 1px solid rgba(189, 206, 255, 0.18);
+  padding: 2px 8px;
   font-size: 11px;
-}
-
-.topic-pill {
+  background: rgba(4, 10, 30, 0.9);
+  color: #d8e2ff;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid #2a2a2a;
-  background: #050505;
-  color: #c7c7c7;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, border 0.15s ease;
+  gap: 4px;
+  opacity: 0.7;
+  transition: all 0.15s ease-out;
 }
 
-.topic-pill.active {
-  background: linear-gradient(180deg, #F2D16B 0%, #D4AF37 100%);
-  color: #000000;
-  border-color: #D4AF37;
+.lang-chip span.flag {
+  font-size: 12px;
 }
 
-/* QUOTE KARTI */
-
-.quote-section {
-  margin-top: 16px;
+.lang-chip.active {
+  background: radial-gradient(circle at top, #266dff, #11358f);
+  border-color: rgba(120, 177, 255, 0.9);
+  opacity: 1;
 }
 
-.quote-card {
-  position: relative;
-  padding: 18px 16px 18px 18px;
-  background: rgba(18, 18, 18, 0.98);
-  border-radius: 18px;
-  border: 1px solid #2a2a2a;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.8);
-  overflow: hidden;
+/* ==========
+   HEADER / LEVEL BAR
+   ========== */
+
+.game-title {
+  text-align: center;
+  margin-top: 10px;
+  margin-bottom: 8px;
+  font-size: 18px;
+  font-weight: 700;
 }
 
-.quote-card::before {
-  content: "";
-  position: absolute;
-  inset: -40%;
-  background: radial-gradient(circle at top left, rgba(212, 175, 55, 0.22), transparent 55%);
-  opacity: 0.9;
+.level-bar-wrapper {
+  margin-bottom: 8px;
 }
 
-.quote-mark {
-  position: relative;
-  z-index: 1;
-  font-family: "Playfair Display", serif;
-  font-size: 34px;
-  color: #F2D16B;
-  margin-bottom: 6px;
+.level-bar-label {
+  font-size: 13px;
+  text-align: center;
+  margin-bottom: 4px;
+  opacity: 0.85;
 }
 
-.quote-text {
-  position: relative;
-  z-index: 1;
-  font-family: "Playfair Display", serif;
-  font-size: 20px;
-  line-height: 1.35;
-  color: #E5E5E5;
-}
-
-/* BUTONLAR */
-
-.main-buttons {
-  margin-top: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.btn {
+.level-bar {
   width: 100%;
-  padding: 12px 14px;
+  height: 6px;
+  background: rgba(9, 18, 48, 0.9);
   border-radius: 999px;
-  border: none;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  transition:
-    background 0.15s ease,
-    color 0.15s ease,
-    box-shadow 0.15s ease,
-    transform 0.08s ease;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(46, 80, 150, 0.6);
 }
 
-.btn-primary-main {
-  background: linear-gradient(180deg, #F2D16B 0%, #D4AF37 100%);
-  color: #000000;
-  box-shadow: 0 0 14px rgba(212, 175, 55, 0.6);
+#level-bar-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #2dc5ff, #32ffb6);
+  box-shadow: 0 0 10px rgba(109, 235, 255, 0.8);
 }
 
-.btn-primary-main:hover {
-  box-shadow: 0 0 22px rgba(212, 175, 55, 0.9);
-  transform: translateY(-1px);
-}
+/* ==========
+   USER STATS
+   ========== */
 
-.btn-secondary {
-  background: #050505;
-  color: #F2D16B;
-  border: 1px solid #2a2a2a;
-}
-
-.btn-secondary:hover {
-  background: #0f0f0f;
-}
-
-.share-buttons {
-  margin-top: 20px;
-  display: flex;
-  gap: 8px;
-}
-
-.btn-ghost {
-  flex: 1;
-  background: #050505;
-  color: #cfcfcf;
-  border: 1px solid #1f1f1f;
+#user-info {
+  text-align: center;
+  margin-top: 10px;
+  margin-bottom: 6px;
   font-size: 13px;
 }
 
-.btn-ghost:hover {
-  border-color: #D4AF37;
-  color: #F2D16B;
+#user-info p {
+  margin-bottom: 2px;
 }
 
-/* GÖREV ÖZETİ */
-
-.bottom-section {
-  margin-top: 22px;
-  padding: 12px;
-  border-radius: 14px;
-  background: #050505;
-  border: 1px dashed #2a2a2a;
+#user-info strong {
+  font-weight: 600;
 }
 
-.tasks-text {
-  margin: 0;
-  white-space: pre-wrap;
-  font-size: 12px;
-  color: #c1c1c1;
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
+/* ==========
+   TAP BUTTON
+   ========== */
 
-/* DROPDOWN MENÜ */
-
-.dropdown-menu {
-  position: absolute;
-  right: 16px;
-  top: 60px;
-  background: #050505;
-  border-radius: 14px;
-  padding: 6px 0;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.9);
-  border: 1px solid #2a2a2a;
-  display: none;
-  min-width: 180px;
-  z-index: 50;
-}
-
-.dropdown-menu.show {
-  display: block;
-}
-
-.dropdown-item {
-  padding: 10px 14px;
-  font-size: 14px;
-  cursor: pointer;
-  color: #e5e5e5;
+.tap-circle {
   display: flex;
   align-items: center;
+  justify-content: center;
+  margin: 22px auto 16px;
+}
+
+/* ANA TAP BUTONU – TELEFONDA DEV GÖRÜNME BUG FIXLİ */
+#tap-btn {
+  width: 260px;
+  height: 260px;
+  max-width: 70vw;
+  max-height: 70vw;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: radial-gradient(circle at 30% 15%, #5dd3ff 0, #1a7cff 40%, #0042a8 75%);
+  box-shadow:
+    0 0 0 5px rgba(41, 116, 255, 0.25),
+    0 20px 40px rgba(0, 0, 0, 0.85);
+  color: #ffffff;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: transform 0.08s ease-out, box-shadow 0.08s ease-out;
+}
+
+#tap-btn:active {
+  transform: scale(0.95);
+  box-shadow:
+    0 0 0 5px rgba(41, 116, 255, 0.22),
+    0 12px 25px rgba(0, 0, 0, 0.85);
+}
+
+/* Mobil cihazlarda butonu küçült – önemli */
+@media (max-width: 600px) {
+  #tap-btn {
+    width: 200px !important;
+    height: 200px !important;
+    max-width: 80vw;
+    max-height: 80vw;
+    font-size: 22px;
+  }
+}
+
+/* ==========
+   UPGRADE & BUTTONS
+   ========== */
+
+.section-title {
+  font-size: 15px;
+  text-align: center;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.section-subtitle {
+  font-size: 11px;
+  text-align: center;
+  opacity: 0.7;
+  margin-bottom: 8px;
+}
+
+.btn-row {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
-.dropdown-item:hover {
-  background: #101010;
+.primary-btn,
+.secondary-btn,
+.outline-btn {
+  width: 100%;
+  border-radius: 999px;
+  padding: 9px 12px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.12s ease-out;
 }
 
-/* RESPONSIVE */
+/* Upgrade, Daily Chest, Daily Tasks, Invite Friends */
+.primary-btn {
+  background: linear-gradient(135deg, #265cff, #1b9cff);
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(21, 107, 255, 0.5);
+}
 
-@media (min-width: 450px) {
-  .app {
-    max-width: 420px;
-    margin: 0 auto;
+.primary-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 4px 12px rgba(21, 107, 255, 0.4);
+}
+
+.secondary-btn {
+  background: rgba(10, 22, 60, 0.98);
+  color: #f1f4ff;
+  border: 1px solid rgba(116, 155, 255, 0.4);
+}
+
+.secondary-btn:active {
+  transform: translateY(1px);
+}
+
+.outline-btn {
+  background: transparent;
+  color: #d9e1ff;
+  border: 1px dashed rgba(131, 168, 255, 0.7);
+}
+
+/* Küçük text alt bilgileri */
+.helper-text {
+  font-size: 11px;
+  opacity: 0.65;
+  text-align: center;
+  margin-top: 4px;
+}
+
+/* ==========
+   MODALS / OVERLAYS
+   ========== */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 20, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.overlay.hidden {
+  display: none;
+}
+
+.overlay-panel {
+  width: 100%;
+  max-width: 420px;
+  max-height: 88vh;
+  background: radial-gradient(circle at top, #10172b 0, #050814 55%);
+  border-radius: 24px;
+  padding: 16px 16px 18px;
+  border: 1px solid rgba(109, 150, 255, 0.4);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.9);
+  display: flex;
+  flex-direction: column;
+}
+
+.overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.overlay-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.overlay-close {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: rgba(13, 24, 55, 0.96);
+  color: #d6e1ff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Scroll içeriği */
+.overlay-body {
+  margin-top: 6px;
+  padding-right: 2px;
+  overflow-y: auto;
+}
+
+/* ==========
+   TASKS / DAILY TASKS
+   ========== */
+
+.tasks-subtitle {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-bottom: 10px;
+}
+
+/* Task listesi */
+#tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Daha sade Boinker tarzı card */
+.task-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(10, 19, 46, 0.95);
+  border: 1px solid rgba(81, 122, 212, 0.55);
+}
+
+.task-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 65%;
+}
+
+.task-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.task-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.task-info-pill {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(38, 112, 255, 0.85);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+
+.task-desc {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.task-reward {
+  font-size: 11px;
+  color: #9ef9ff;
+}
+
+/* Task actions */
+.task-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.task-cta-btn {
+  min-width: 70px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: none;
+  font-size: 11px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #2764ff, #2fb1ff);
+  color: #ffffff;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.task-cta-btn.secondary {
+  background: rgba(9, 20, 54, 0.95);
+  color: #dfe6ff;
+  border: 1px solid rgba(109, 143, 230, 0.7);
+}
+
+.task-cta-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ==========
+   WALLET MODAL
+   ========== */
+
+.wallet-info {
+  font-size: 12px;
+  opacity: 0.75;
+  margin-bottom: 10px;
+}
+
+.wallet-address {
+  font-size: 12px;
+  margin-top: 6px;
+  word-break: break-all;
+  color: #c6d6ff;
+}
+
+/* ==========
+   INVITE / LEADERBOARD
+   ========== */
+
+.invite-box {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-bottom: 10px;
+}
+
+.invite-link-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.invite-link-input {
+  flex: 1;
+  border-radius: 999px;
+  border: 1px solid rgba(128, 162, 245, 0.8);
+  padding: 6px 9px;
+  font-size: 12px;
+  background: rgba(5, 10, 32, 0.9);
+  color: #f5f7ff;
+}
+
+/* ==========
+   RESPONSIVE
+   ========== */
+
+@media (max-width: 450px) {
+  .game-card {
+    padding: 14px 14px 16px;
+    border-radius: 20px;
+  }
+
+  .overlay-panel {
+    padding: 14px 14px 16px;
+    border-radius: 20px;
+  }
+
+  .btn-row {
+    gap: 6px;
   }
 }
