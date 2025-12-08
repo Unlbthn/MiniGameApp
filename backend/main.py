@@ -3,6 +3,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
+from sqlalchemy import func, or_, and_
 from datetime import datetime, timedelta
 import os
 from typing import Optional, List
