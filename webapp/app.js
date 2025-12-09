@@ -1,436 +1,143 @@
-// webapp/app.js
-// Tap to Earn TON – front-end (Telegram Mini App)
-
-"use strict";
-
-/* -------------------- Telegram / globals -------------------- */
-
+// ===========================
+// Telegram WebApp & Globals
+// ===========================
 const tg = window.Telegram ? window.Telegram.WebApp : null;
 const API_BASE = window.location.origin;
 
 let userId = null;
 let userState = null;
-let currentLang = localStorage.getItem("tap_lang") || "en";
 
-// tap → interstitial ad
+// tap → reklam sayacı
 let tapCounter = 0;
 const TAPS_PER_AD = 100;
 
-// AdsGram controllers
-let adsInterstitial = null;
-let adsReward = null;
-// IDs you created in AdsGram
-const INTERSTITIAL_BLOCK_ID = "int-17995";
-const REWARD_BLOCK_ID = "17996";
-
-/* -------------------- i18n -------------------- */
-
+// ===========================
+// Dil metinleri
+// ===========================
 const LANG = {
   en: {
+    level: "Level",
     coins: "Coins",
     tapPower: "Tap Power",
     tonCredits: "TON Credits",
-    level: "Level",
-    nextLevel: "Next level",
     tap: "TAP",
-    upgradeBtn: "Increase Tap Power (cost: {cost} coins)",
-    dailyChest: "Daily TON Chest",
-    dailyTasks: "Daily Tasks",
-    inviteFriends: "Invite Friends",
-    chestTitle: "Daily TON Chest",
-    chestDesc: "Watch an ad and get 0.01 TON.",
-    chestOpened: "Chest opened! +0.01 TON",
-    chestFailed: "Chest failed. Please watch the ad to the end.",
-    tapFailed: "Tap failed, please try again.",
-    upgradeFailed: "You don’t have enough coins.",
-    genericError: "Something went wrong, please try again.",
-    leaderboardTitle: "Top 10 Players",
-    yourRank: "Your position",
-    copy: "Copy",
-    copied: "Copied!",
-    shareText:
-      "Join Tap to Earn TON! Tap, complete tasks and earn TON: https://t.me/TaptoEarnTonBot/app",
+    upgrade: "Increase Tap Power",
+    upgrade_cost_prefix: "Increase Tap Power (cost: ",
+    next_level: "Next level",
+    daily_tasks_title: "Daily Tasks",
+    chest_title: "Daily TON Chest",
+    chest_cta: "Open Chest",
+    chest_watched: "Chest opened!",
+    tasks_btn: "Daily Tasks",
+    invite_friends: "Invite Friends",
+    copy_link: "Copy",
+    copied: "Copied",
+    leaderboard_title: "Top 10 Players",
+    leaderboard_you: "You",
+    leaderboard_empty: "No data yet.",
+    error_generic: "Something went wrong.",
+    tap_failed: "Tap failed, please try again.",
+    not_enough_coins: "Not enough coins.",
+    reward_failed: "Chest failed, please try again.",
   },
   tr: {
+    level: "Seviye",
     coins: "Coin",
     tapPower: "Vuruş Gücü",
     tonCredits: "TON Kredisi",
-    level: "Seviye",
-    nextLevel: "Sonraki seviye",
     tap: "TIKLA",
-    upgradeBtn: "Vuruş gücünü arttır (maliyet: {cost} coin)",
-    dailyChest: "Günlük TON Sandığı",
-    dailyTasks: "Günlük Görevler",
-    inviteFriends: "Arkadaşlarını Davet Et",
-    chestTitle: "Günlük TON Sandığı",
-    chestDesc: "Reklam izle ve 0.01 TON kazan.",
-    chestOpened: "Sandık açıldı! +0.01 TON",
-    chestFailed: "Sandık başarısız. Reklamı sonuna kadar izlemelisin.",
-    tapFailed: "Tık başarısız, lütfen tekrar dene.",
-    upgradeFailed: "Yeterli coinin yok.",
-    genericError: "Bir hata oluştu, lütfen tekrar dene.",
-    leaderboardTitle: "İlk 10 Oyuncu",
-    yourRank: "Sıran",
-    copy: "Kopyala",
-    copied: "Kopyalandı!",
-    shareText:
-      "Tap to Earn TON oyununa katıl! Tıkla, görevleri yap ve TON kazan: https://t.me/TaptoEarnTonBot/app",
+    upgrade: "Vuruş Gücünü Artır",
+    upgrade_cost_prefix: "Vuruş Gücünü Artır (maliyet: ",
+    next_level: "Sonraki seviye",
+    daily_tasks_title: "Günlük Görevler",
+    chest_title: "Günlük TON Sandığı",
+    chest_cta: "Sandığı Aç",
+    chest_watched: "Sandık açıldı!",
+    tasks_btn: "Günlük Görevler",
+    invite_friends: "Arkadaşlarını Davet Et",
+    copy_link: "Kopyala",
+    copied: "Kopyalandı",
+    leaderboard_title: "En İyi 10 Oyuncu",
+    leaderboard_you: "Sen",
+    leaderboard_empty: "Henüz veri yok.",
+    error_generic: "Bir şeyler ters gitti.",
+    tap_failed: "Tıklama başarısız, tekrar dene.",
+    not_enough_coins: "Yetersiz coin.",
+    reward_failed: "Sandık açılamadı, tekrar dene.",
   },
 };
 
-function t(key, vars = {}) {
-  const dict = LANG[currentLang] || LANG.en;
-  let str = dict[key] || LANG.en[key] || key;
-  for (const [k, v] of Object.entries(vars)) {
-    str = str.replace(`{${k}}`, v);
-  }
-  return str;
-}
+let currentLang = localStorage.getItem("tap_lang") || "en";
 
-/* -------------------- helpers -------------------- */
+// ===========================
+// AdsGram
+// ===========================
+let AdControllerReward = null;
+let AdControllerInterstitial = null;
 
-function $(id) {
-  return document.getElementById(id);
-}
-
-function safeAddListener(el, evt, fn) {
-  if (el) el.addEventListener(evt, fn);
-}
-
-function showAlert(msg) {
-  if (tg && tg.showAlert) tg.showAlert(msg);
-  else alert(msg);
-}
-
-/* -------------------- AdsGram -------------------- */
+// Block ID'ler (senin AdsGram panelindeki)
+const ADSGRAM_REWARD_BLOCK_ID = "17996";
+const ADSGRAM_INTERSTITIAL_BLOCK_ID = "int-17995";
 
 function initAdsgram() {
   if (!window.Adsgram) {
-    console.log("AdsGram SDK not found.");
+    console.log("AdsGram SDK bulunamadı (sad.min.js yüklü mü?)");
     return;
-  }
-  try {
-    adsInterstitial = window.Adsgram.init({
-      blockId: INTERSTITIAL_BLOCK_ID,
-    });
-  } catch (e) {
-    console.error("AdsGram interstitial init error:", e);
   }
 
   try {
-    adsReward = window.Adsgram.init({
-      blockId: REWARD_BLOCK_ID,
+    AdControllerReward = window.Adsgram.init({
+      blockId: ADSGRAM_REWARD_BLOCK_ID,
     });
+    AdControllerInterstitial = window.Adsgram.init({
+      blockId: ADSGRAM_INTERSTITIAL_BLOCK_ID,
+    });
+    console.log("AdsGram init OK");
   } catch (e) {
-    console.error("AdsGram reward init error:", e);
+    console.error("AdsGram init error:", e);
   }
 }
 
-function maybeShowTapAd() {
-  if (!adsInterstitial) return;
-  if (!userId) return;
+function showInterstitialIfNeeded() {
+  if (!AdControllerInterstitial) return;
+  if (tapCounter < TAPS_PER_AD) return;
 
-  adsInterstitial
-    .show({ userId: String(userId) })
-    .then((res) => console.log("Interstitial result:", res))
-    .catch((err) => console.error("Interstitial error:", err));
-}
-
-function showRewardAd(onDone) {
-  if (!adsReward) {
-    showAlert("Ad is not ready yet, please try later.");
-    return;
-  }
-  if (!userId) return;
-
-  adsReward
-    .show({ userId: String(userId) })
-    .then((result) => {
-      console.log("Reward ad result:", result);
-      if (typeof onDone === "function") onDone(result);
-    })
-    .catch((err) => {
-      console.error("Reward ad error:", err);
-      showAlert(t("genericError"));
-    });
-}
-
-/* -------------------- API calls -------------------- */
-
-async function fetchJSON(url, options = {}) {
-  const res = await fetch(url, options);
-  if (!res.ok) {
-    const text = await res.text();
-    console.error("API error:", url, res.status, text);
-    throw new Error("API_ERROR");
-  }
-  return res.json();
-}
-
-async function apiGetMe() {
-  if (!userId) return null;
-  return fetchJSON(`${API_BASE}/api/me?telegram_id=${userId}`);
-}
-
-async function apiTap(count = 1) {
-  if (!userId) return null;
-  return fetchJSON(`${API_BASE}/api/tap`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ telegram_id: userId, taps: count }),
-  });
-}
-
-async function apiUpgradeTapPower() {
-  if (!userId) return null;
-  return fetchJSON(`${API_BASE}/api/upgrade/tap_power`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ telegram_id: userId }),
-  });
-}
-
-async function apiRewardAd(kind) {
-  if (!userId) return null;
-  return fetchJSON(`${API_BASE}/api/reward/ad`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ telegram_id: userId, kind }),
-  });
-}
-
-async function apiGetLeaderboard() {
-  if (!userId) return null;
-  return fetchJSON(
-    `${API_BASE}/api/leaderboard?limit=10&telegram_id=${userId}`
+  tapCounter = 0;
+  AdControllerInterstitial.show().catch((err) =>
+    console.error("Interstitial error:", err)
   );
 }
 
-/* -------------------- state + render -------------------- */
-
-function getUpgradeCost() {
-  if (!userState) return 100;
-  const base = userState.tap_power || 1;
-  return base * 100;
-}
-
-function renderUser() {
-  if (!userState) return;
-
-  const lvlEl = $("level-value");
-  const coinsEl = $("coins-value");
-  const powerEl = $("tap-power-value");
-  const tonEl = $("ton-credits-value");
-  const nextLabel = $("next-level-label");
-  const progressBar = $("level-progress-fill");
-
-  if (lvlEl) lvlEl.textContent = userState.level ?? 1;
-  if (coinsEl) coinsEl.textContent = userState.coins ?? 0;
-  if (powerEl) powerEl.textContent = userState.tap_power ?? 1;
-  if (tonEl)
-    tonEl.textContent = (userState.ton_credits ?? 0).toFixed(2);
-
-  const currXp =
-    userState.level_xp ?? userState.xp ?? userState.current_xp ?? 0;
-  const nextXp =
-    userState.next_level_xp ??
-    (userState.level ? userState.level * 1000 : 1000);
-
-  if (nextLabel)
-    nextLabel.textContent = `${t("nextLevel")}: ${currXp} / ${nextXp}`;
-
-  if (progressBar) {
-    const pct = Math.max(
-      0,
-      Math.min(100, nextXp > 0 ? Math.floor((currXp / nextXp) * 100) : 0)
-    );
-    progressBar.style.width = `${pct}%`;
+/**
+ * Rewarded video gösterir, izlenirse onDone() çağırır.
+ */
+function showRewardAd(onDone) {
+  if (!AdControllerReward) {
+    alert("Reklam şu anda hazır değil.");
+    return;
   }
 
-  // update texts depending on language
-  updateLangUI();
-}
-
-function updateLangUI() {
-  const langBtns = document.querySelectorAll("[data-lang]");
-  langBtns.forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.lang === currentLang);
-  });
-
-  const coinsLabel = $("label-coins");
-  const powerLabel = $("label-tap-power");
-  const tonLabel = $("label-ton-credits");
-  const levelLabel = $("label-level");
-  const tapBtn = $("tap-btn");
-  const upgradeBtn = $("upgrade-btn");
-  const chestBtn = $("daily-chest-btn");
-  const tasksBtn = $("daily-tasks-btn");
-  const inviteTitle = $("invite-title");
-  const chestTitle = $("chest-title");
-  const chestDesc = $("chest-desc");
-  const leaderboardTitle = $("leaderboard-title");
-
-  if (coinsLabel) coinsLabel.textContent = t("coins");
-  if (powerLabel) powerLabel.textContent = t("tapPower");
-  if (tonLabel) tonLabel.textContent = t("tonCredits");
-  if (levelLabel) levelLabel.textContent = t("level");
-  if (tapBtn) tapBtn.textContent = t("tap");
-
-  const cost = getUpgradeCost();
-  if (upgradeBtn) upgradeBtn.textContent = t("upgradeBtn", { cost });
-
-  if (chestBtn) chestBtn.textContent = t("dailyChest");
-  if (tasksBtn) tasksBtn.textContent = t("dailyTasks");
-  if (inviteTitle) inviteTitle.textContent = t("inviteFriends");
-  if (chestTitle) chestTitle.textContent = t("chestTitle");
-  if (chestDesc) chestDesc.textContent = t("chestDesc");
-  if (leaderboardTitle) leaderboardTitle.textContent = t("leaderboardTitle");
-}
-
-/* -------------------- actions -------------------- */
-
-async function handleTap() {
-  if (!userId) return;
-  try {
-    const data = await apiTap(1);
-    if (data && data.user) {
-      userState = data.user;
-      renderUser();
-    }
-    tapCounter += 1;
-    if (tapCounter >= TAPS_PER_AD) {
-      tapCounter = 0;
-      maybeShowTapAd();
-    }
-  } catch (err) {
-    console.error("tap error:", err);
-    showAlert(t("tapFailed"));
-  }
-}
-
-async function handleUpgrade() {
-  if (!userId) return;
-  try {
-    const data = await apiUpgradeTapPower();
-    if (data && data.user) {
-      userState = data.user;
-      renderUser();
-    }
-  } catch (err) {
-    console.error("upgrade error:", err);
-    showAlert(t("upgradeFailed"));
-  }
-}
-
-function openDailyChest() {
-  showRewardAd(async (result) => {
-    if (!result || result.error || !result.done) {
-      showAlert(t("chestFailed"));
-      return;
-    }
-    try {
-      const data = await apiRewardAd("chest");
-      if (data && data.user) {
-        userState = data.user;
-        renderUser();
+  AdControllerReward.show()
+    .then((result) => {
+      console.log("Reward ad result:", result);
+      if (result && result.done && !result.error) {
+        if (typeof onDone === "function") onDone();
+      } else {
+        alert("Ödül için reklamı tamamen izlemen gerekiyor.");
       }
-      showAlert(t("chestOpened"));
-    } catch (err) {
-      console.error("reward api error:", err);
-      showAlert(t("genericError"));
-    }
-  });
-}
-
-function openTasks() {
-  const modal = $("tasks-modal");
-  if (modal) modal.classList.add("open");
-}
-
-function closeTasks() {
-  const modal = $("tasks-modal");
-  if (modal) modal.classList.remove("open");
-}
-
-async function openLeaderboard() {
-  const modal = $("leaderboard-modal");
-  const listEl = $("leaderboard-list");
-  const yourRankEl = $("leaderboard-your-rank");
-
-  if (!modal || !listEl || !yourRankEl) return;
-
-  listEl.innerHTML = "";
-  yourRankEl.textContent = "...";
-
-  modal.classList.add("open");
-
-  try {
-    const data = await apiGetLeaderboard();
-    const top = data.top || [];
-    const userInfo = data.user || {};
-
-    top.forEach((row) => {
-      const li = document.createElement("li");
-      const name =
-        row.username || row.first_name || `User ${row.telegram_id}`;
-      const coins = row.total_coins ?? row.coins ?? 0;
-      const rank = row.rank ?? "?";
-      li.textContent = `#${rank} – ${name} – ${coins} ${t("coins")}`;
-      listEl.appendChild(li);
+    })
+    .catch((err) => {
+      console.error("Reward ad error:", err);
+      alert("Reklam oynatılırken hata oluştu.");
     });
-
-    if (userInfo.rank != null) {
-      yourRankEl.textContent = `${t("yourRank")}: #${userInfo.rank}`;
-    } else if (userState && userState.total_coins != null) {
-      yourRankEl.textContent = `${t("yourRank")}: ${userState.total_coins} ${t(
-        "coins"
-      )}`;
-    }
-  } catch (err) {
-    console.error("leaderboard error:", err);
-    yourRankEl.textContent = t("genericError");
-  }
 }
 
-function closeLeaderboard() {
-  const modal = $("leaderboard-modal");
-  if (modal) modal.classList.remove("open");
-}
-
-function handleInviteGo() {
-  const text = t("shareText");
-  const url = "https://t.me/TaptoEarnTonBot/app";
-
-  if (tg && tg.openTelegramLink) {
-    tg.openTelegramLink(
-      `https://t.me/share/url?url=${encodeURIComponent(
-        url
-      )}&text=${encodeURIComponent(text)}`
-    );
-  } else {
-    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(
-      url
-    )}&text=${encodeURIComponent(text)}`;
-    window.open(shareUrl, "_blank");
-  }
-}
-
-/* -------------------- language + init user -------------------- */
-
-function initLanguageSelector() {
-  document.querySelectorAll("[data-lang]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const lang = btn.dataset.lang;
-      if (!LANG[lang]) return;
-      currentLang = lang;
-      localStorage.setItem("tap_lang", lang);
-      updateLangUI();
-    });
-  });
-}
-
-function initUserId() {
-  if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+// ===========================
+// User init & API helpers
+// ===========================
+async function initUser() {
+  // Telegram ID
+  if (tg?.initDataUnsafe?.user?.id) {
     userId = tg.initDataUnsafe.user.id;
   } else {
     const saved = localStorage.getItem("tap_user_id");
@@ -441,38 +148,309 @@ function initUserId() {
       localStorage.setItem("tap_user_id", String(userId));
     }
   }
+
+  await fetchUser();
 }
 
-async function loadUser() {
+async function apiGet(path) {
+  const res = await fetch(API_BASE + path);
+  if (!res.ok) throw new Error("GET " + path + " failed");
+  return res.json();
+}
+
+async function apiPost(path, payload) {
+  const res = await fetch(API_BASE + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = data.detail || LANG[currentLang].error_generic;
+    throw new Error(msg);
+  }
+  return data;
+}
+
+async function fetchUser() {
+  if (!userId) return;
   try {
-    const data = await apiGetMe();
-    if (data) {
-      userState = data;
-      renderUser();
-    }
-  } catch (err) {
-    console.error("get /api/me error:", err);
+    const data = await apiGet(`/api/me?telegram_id=${userId}`);
+    userState = data;
+    renderUser();
+  } catch (e) {
+    console.error("fetchUser error:", e);
   }
 }
 
-/* -------------------- TON wallet badge (only UI) -------------------- */
+// ===========================
+// Rendering helpers
+// ===========================
+function $(selector) {
+  return document.querySelector(selector);
+}
 
-function initWalletBadge() {
-  const walletBadge = $("wallet-badge");
-  if (!walletBadge) return;
+function renderUser() {
+  if (!userState) return;
+  const t = LANG[currentLang];
 
-  walletBadge.addEventListener("click", () => {
-    // Sadece Telegram TON cüzdanını açmaya çalışıyoruz
-    if (tg && tg.openTelegramLink) {
-      tg.openTelegramLink("https://t.me/wallet");
-    } else {
-      window.open("https://t.me/wallet", "_blank");
+  const levelEl = $("#level-value");
+  const coinsEl = $("#coins-value");
+  const tapPowerEl = $("#tap-power-value");
+  const tonCreditsEl = $("#ton-credits-value");
+  const nextLevelLabel = $("#next-level-label");
+  const nextLevelBar = $("#next-level-bar");
+
+  if (levelEl) levelEl.textContent = userState.level ?? 1;
+  if (coinsEl) coinsEl.textContent = userState.coins ?? 0;
+  if (tapPowerEl) tapPowerEl.textContent = userState.tap_power ?? 1;
+  if (tonCreditsEl)
+    tonCreditsEl.textContent = (userState.ton_credits ?? 0).toFixed(2);
+
+  // Level progress (backend'den geliyorsa)
+  const currentXp = userState.current_xp ?? 0;
+  const nextXp = userState.next_level_xp ?? 1000;
+  if (nextLevelLabel) {
+    nextLevelLabel.textContent = `${t.next_level}: ${currentXp} / ${nextXp}`;
+  }
+  if (nextLevelBar) {
+    const pct = Math.max(0, Math.min(100, (currentXp / nextXp) * 100));
+    nextLevelBar.style.width = pct + "%";
+  }
+
+  updateTexts();
+}
+
+// ===========================
+// Dil
+// ===========================
+function initLanguageSelector() {
+  const chips = document.querySelectorAll(".lang-chip");
+  chips.forEach((chip) => {
+    const lang = chip.dataset.lang;
+    if (lang === currentLang) chip.classList.add("active");
+
+    chip.addEventListener("click", () => {
+      currentLang = lang;
+      localStorage.setItem("tap_lang", currentLang);
+      chips.forEach((c) =>
+        c.classList.toggle("active", c.dataset.lang === currentLang)
+      );
+      updateTexts();
+      renderUser();
+    });
+  });
+}
+
+function updateTexts() {
+  const t = LANG[currentLang];
+
+  const tapBtn = $("#tap-btn");
+  const upgradeTitle = $("#upgrade-title");
+  const upgradeBtn = $("#upgrade-btn");
+  const tasksBtn = $("#tasks-open-btn");
+  const chestBtn = $("#chest-btn");
+  const tasksTitle = $("#tasks-title");
+  const inviteTitle = $("#invite-title");
+  const copyBtn = $("#invite-copy-btn");
+  const leaderboardTitle = $("#leaderboard-title");
+
+  const cost = getUpgradeCost();
+
+  if (tapBtn) tapBtn.textContent = t.tap;
+  if (upgradeTitle) upgradeTitle.textContent = t.upgrade;
+  if (upgradeBtn)
+    upgradeBtn.textContent = `${t.upgrade_cost_prefix}${cost} coins)`;
+  if (tasksBtn) tasksBtn.textContent = t.tasks_btn;
+  if (chestBtn) chestBtn.textContent = t.chest_cta;
+  if (tasksTitle) tasksTitle.textContent = t.daily_tasks_title;
+  if (inviteTitle) inviteTitle.textContent = t.invite_friends;
+  if (copyBtn) copyBtn.textContent = t.copy_link;
+  if (leaderboardTitle) leaderboardTitle.textContent = t.leaderboard_title;
+
+  const tonLabel = $("#ton-label");
+  if (tonLabel) tonLabel.textContent = t.tonCredits;
+}
+
+// ===========================
+// Tap & Upgrade
+// ===========================
+function getUpgradeCost() {
+  if (!userState || typeof userState.tap_power !== "number") return 100;
+  return userState.tap_power * 100;
+}
+
+async function handleTap() {
+  if (!userId) return;
+  try {
+    const data = await apiPost("/api/tap", {
+      telegram_id: userId,
+      taps: 1,
+    });
+    if (data.user) {
+      userState = data.user;
+      renderUser();
+    }
+    tapCounter += 1;
+    showInterstitialIfNeeded();
+  } catch (e) {
+    console.error("tap error:", e);
+    alert(LANG[currentLang].tap_failed);
+  }
+}
+
+async function handleUpgrade() {
+  if (!userId) return;
+  try {
+    const data = await apiPost("/api/upgrade/tap_power", {
+      telegram_id: userId,
+    });
+    if (data.user) {
+      userState = data.user;
+      renderUser();
+    }
+  } catch (e) {
+    console.error("upgrade error:", e);
+    alert(e.message || LANG[currentLang].not_enough_coins);
+  }
+}
+
+// ===========================
+// Daily TON Chest (rewarded ad)
+// ===========================
+async function openDailyChest() {
+  if (!userId) return;
+
+  showRewardAd(async () => {
+    try {
+      const data = await apiPost("/api/reward/ad", {
+        telegram_id: userId,
+      });
+      if (data.user) {
+        userState = data.user;
+        renderUser();
+      }
+      alert(LANG[currentLang].chest_watched);
+    } catch (e) {
+      console.error("chest reward error:", e);
+      alert(LANG[currentLang].reward_failed);
     }
   });
 }
 
-/* -------------------- DOMContentLoaded -------------------- */
+// ===========================
+// Daily Tasks (basit versiyon)
+// ===========================
+function openTasksModal() {
+  const modal = $("#tasks-modal");
+  if (modal) modal.classList.remove("hidden");
+}
 
+function closeTasksModal() {
+  const modal = $("#tasks-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+// Invite Friends task
+function openInviteShare() {
+  if (!userId) return;
+
+  const startParam = `ref_${userId}`;
+  const botUsername = "TaptoEarnTonBot"; // kendi bot username'in
+  const url = `https://t.me/${botUsername}?start=${startParam}`;
+  const text =
+    currentLang === "tr"
+      ? "TON kazanmak için bu oyuna katıl! 👇"
+      : "Join this TON tap game and start earning! 👇";
+
+  const shareLink =
+    "https://t.me/share/url?url=" +
+    encodeURIComponent(url) +
+    "&text=" +
+    encodeURIComponent(text);
+
+  if (tg?.openTelegramLink) {
+    tg.openTelegramLink(shareLink);
+  } else {
+    window.open(shareLink, "_blank");
+  }
+}
+
+function copyInviteLink() {
+  if (!userId) return;
+  const botUsername = "TaptoEarnTonBot";
+  const url = `https://t.me/${botUsername}?start=ref_${userId}`;
+  navigator.clipboard
+    .writeText(url)
+    .then(() => alert(LANG[currentLang].copied))
+    .catch(() => alert(url));
+}
+
+// ===========================
+// Leaderboard
+// ===========================
+async function openLeaderboard() {
+  if (!userId) return;
+
+  try {
+    const data = await apiGet(`/api/leaderboard?telegram_id=${userId}`);
+    const list = $("#leaderboard-list");
+    const meRow = $("#leaderboard-me");
+    if (!list || !meRow) return;
+
+    list.innerHTML = "";
+
+    if (!data.top || data.top.length === 0) {
+      list.innerHTML = `<li class="lb-empty">${LANG[currentLang].leaderboard_empty}</li>`;
+    } else {
+      data.top.forEach((item) => {
+        const li = document.createElement("li");
+        li.className = "lb-item";
+        li.innerHTML = `
+          <span class="lb-rank">#${item.rank}</span>
+          <span class="lb-name">${item.username || "User " + item.rank}</span>
+          <span class="lb-coins">${item.total_coins ?? item.coins ?? 0}</span>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    if (data.me) {
+      meRow.innerHTML = `
+        <span class="lb-rank">#${data.me.rank}</span>
+        <span class="lb-name">${LANG[currentLang].leaderboard_you}</span>
+        <span class="lb-coins">${data.me.total_coins ?? 0}</span>
+      `;
+    }
+
+    const modal = $("#leaderboard-modal");
+    if (modal) modal.classList.remove("hidden");
+  } catch (e) {
+    console.error("leaderboard error:", e);
+    alert(LANG[currentLang].error_generic);
+  }
+}
+
+function closeLeaderboard() {
+  const modal = $("#leaderboard-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+// ===========================
+// TON Wallet (şimdilik placeholder)
+// ===========================
+function openWallet() {
+  alert(
+    currentLang === "tr"
+      ? "TON cüzdan entegrasyonu yakında eklenecek."
+      : "TON wallet integration is coming soon."
+  );
+}
+
+// ===========================
+// DOMContentLoaded
+// ===========================
 document.addEventListener("DOMContentLoaded", () => {
   if (tg) {
     try {
@@ -482,21 +460,31 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  initUserId();
+  // butonlar
+  const tapBtn = $("#tap-btn");
+  const upgradeBtn = $("#upgrade-btn");
+  const chestBtn = $("#chest-btn");
+  const tasksBtn = $("#tasks-open-btn");
+  const tasksClose = $("#tasks-close-btn");
+  const inviteGoBtn = $("#invite-go-btn");
+  const inviteCopyBtn = $("#invite-copy-btn");
+  const walletIcon = $("#wallet-icon");
+  const trophyIcon = $("#trophy-icon");
+  const lbCloseBtn = $("#leaderboard-close-btn");
+
+  if (tapBtn) tapBtn.addEventListener("click", handleTap);
+  if (upgradeBtn) upgradeBtn.addEventListener("click", handleUpgrade);
+  if (chestBtn) chestBtn.addEventListener("click", openDailyChest);
+  if (tasksBtn) tasksBtn.addEventListener("click", openTasksModal);
+  if (tasksClose) tasksClose.addEventListener("click", closeTasksModal);
+  if (inviteGoBtn) inviteGoBtn.addEventListener("click", openInviteShare);
+  if (inviteCopyBtn) inviteCopyBtn.addEventListener("click", copyInviteLink);
+  if (walletIcon) walletIcon.addEventListener("click", openWallet);
+  if (trophyIcon) trophyIcon.addEventListener("click", openLeaderboard);
+  if (lbCloseBtn) lbCloseBtn.addEventListener("click", closeLeaderboard);
+
   initLanguageSelector();
-  initWalletBadge();
+  updateTexts();
+  initUser();
   initAdsgram();
-
-  // buttons
-  safeAddListener($("tap-btn"), "click", handleTap);
-  safeAddListener($("upgrade-btn"), "click", handleUpgrade);
-  safeAddListener($("daily-chest-btn"), "click", openDailyChest);
-  safeAddListener($("daily-tasks-btn"), "click", openTasks);
-  safeAddListener($("tasks-close-btn"), "click", closeTasks);
-  safeAddListener($("leaderboard-btn"), "click", openLeaderboard);
-  safeAddListener($("leaderboard-close-btn"), "click", closeLeaderboard);
-  safeAddListener($("invite-go-btn"), "click", handleInviteGo);
-
-  updateLangUI();
-  loadUser();
 });
