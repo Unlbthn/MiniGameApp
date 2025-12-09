@@ -1,314 +1,291 @@
-// ===============================
 // Telegram WebApp objesi
-// ===============================
 const tg = window.Telegram ? window.Telegram.WebApp : null;
 
-// ===============================
 // Dil metinleri
-// ===============================
 const LANG = {
   en: {
     tap: "TAP",
-    level: "Level",
-    coins: "Coins",
-    tap_power: "Tap Power",
-    ton_credits: "TON Credits",
+    upgrade_title: "Upgrade",
+    upgrade_btn_prefix: "Increase Tap Power (cost: ",
+    wallet_title: "TON Wallet",
+    buy_ton: "Buy coins with TON (beta)",
     daily_tasks: "Daily Tasks",
-    open_tasks: "Daily Tasks",
-    wallet_connect: "Connect TON Wallet",
+    daily_sub: "Complete tasks to earn extra coins and TON credits.",
+    tasks_button: "Daily Tasks",
+    ton_credits_label: "TON Credits",
     leaderboard_title: "Top 10 Players",
-    leaderboard_you: "Your rank",
-    no_rank: "Not ranked yet",
-    chest_title: "Daily TON Chest",
-    chest_desc: "Watch an ad and get TON bonus.",
-    invite_title: "Invite Friends",
-    invite_desc: "Invite your friends and earn TON when they play.",
-    invite_go: "INVITE",
-    invite_check: "CHECK",
-    invite_claim: "CLAIM",
-    watch_ad: "WATCH AD",
-    close: "Close",
-    tap_failed: "Tap failed, please try again.",
-    not_enough_coins: "Not enough coins!",
-    task_not_ready: "You must CHECK before CLAIM.",
-    chest_limit_reached: "Daily chest limit reached.",
+    leaderboard_me: "Your Rank",
+    chest_btn: "OPEN",
+    watch_ad_btn: "WATCH AD",
+    go_btn: "GO",
+    check_btn: "CHECK",
+    claim_btn: "CLAIM",
   },
   tr: {
     tap: "TIKLA",
-    level: "Seviye",
-    coins: "Coin",
-    tap_power: "Vuruş Gücü",
-    ton_credits: "TON Kredisi",
+    upgrade_title: "Yükselt",
+    upgrade_btn_prefix: "Vuruş Gücünü Artır (maliyet: ",
+    wallet_title: "TON Cüzdan",
+    buy_ton: "TON ile coin satın al (beta)",
     daily_tasks: "Günlük Görevler",
-    open_tasks: "Günlük Görevler",
-    wallet_connect: "TON Cüzdan Bağla",
-    leaderboard_title: "En İyi 10 Oyuncu",
-    leaderboard_you: "Senin sıran",
-    no_rank: "Henüz sıralamada değilsin",
-    chest_title: "Günlük TON Sandığı",
-    chest_desc: "Reklam izle, TON bonusu kazan.",
-    invite_title: "Arkadaş Davet Et",
-    invite_desc: "Arkadaşlarını davet et, oynadıkça TON kazan.",
-    invite_go: "DAVET ET",
-    invite_check: "KONTROL",
-    invite_claim: "AL",
-    watch_ad: "REKLAM İZLE",
-    close: "Kapat",
-    tap_failed: "Tıklama başarısız, tekrar dene.",
-    not_enough_coins: "Yetersiz coin!",
-    task_not_ready: "Önce KONTROL etmelisin.",
-    chest_limit_reached: "Günlük sandık limitine ulaştın.",
+    daily_sub: "Ek coin ve TON kredisi için görevleri tamamla.",
+    tasks_button: "Günlük Görevler",
+    ton_credits_label: "TON Kredileri",
+    leaderboard_title: "İlk 10 Oyuncu",
+    leaderboard_me: "Senin Sıran",
+    chest_btn: "AÇ",
+    watch_ad_btn: "REKLAM İZLE",
+    go_btn: "GİT",
+    check_btn: "KONTROL",
+    claim_btn: "AL",
   },
 };
 
 let currentLang = localStorage.getItem("tap_lang") || "en";
 
-// ===============================
-// Global durum
-// ===============================
+// Backend origin
 const API_BASE = window.location.origin;
 
+// Kullanıcı durumu
 let userId = null;
-let userState = null; // backend /api/me sonucu
-let tapCounter = 0;
-const TAPS_PER_AD = 100; // her 100 tap'te 1 interstitial
-let lastAdTime = 0;
-const AD_INTERVAL_MS = 60_000;
+let userState = null;
 
 // AdsGram
 let AdController = null;
-const ADSGRAM_BLOCK_ID_REWARDED = "17996";
-const ADSGRAM_BLOCK_ID_INTERSTITIAL = "int-17995";
+// Yeni blockId'yi buraya yazmıştık (örnek: "17996")
+const ADSGRAM_REWARD_BLOCK_ID = "17996";
+const ADSGRAM_INTERSTITIAL_BLOCK_ID = "int-17995";
 
-// TonConnect
-let tonConnectUI = null;
-let connectedWalletAddress = null;
-const TONCONNECT_MANIFEST_URL =
-  "https://ton-connect.github.io/demo-dapp-with-react-ui/tonconnect-manifest.json";
+let tapCounter = 0;
+const TAPS_PER_AD = 100;
+let lastInterstitialTime = 0;
+const INTERSTITIAL_INTERVAL_MS = 60_000;
 
-// Görevler / Task durumu
-// task_status_map: { task_id: "pending" | "checked" | "claimed" | ... }
+// Tasks
 const taskStatusMap = {};
 
-// Görev tanımları (id'ler backend ile uyumlu olmalı)
+// Günlük görevler (sadeleştirilmiş ama gelir odaklı)
 const TASKS = [
   {
     id: "daily_ton_chest",
-    kind: "reward_ad", // AdsGram rewarded
-    icon: "💰",
-    titleKey: "chest_title",
-    descKey: "chest_desc",
-    rewardText: "+0.1 TON / day",
+    type: "chest",
+    iconEmoji: "🎁",
+    title: "Daily TON Chest",
+    description: "Watch an ad & get 0.01 TON.",
+    rewardText: "+0.01 TON",
+  },
+  {
+    id: "reward_video_extra",
+    type: "reward",
+    iconEmoji: "🎬",
+    title: "Watch a Reward Ad",
+    description: "Watch a full ad and earn bonus.",
+    rewardText: "+TON Credits",
   },
   {
     id: "invite_friends",
-    kind: "invite",
-    icon: "👥",
-    titleKey: "invite_title",
-    descKey: "invite_desc",
+    type: "invite",
+    iconEmoji: "👥",
+    title: "Invite Friends",
+    description: "Invite friends via Telegram and earn when they play.",
     rewardText: "+0.02 TON per active friend",
   },
-  // buraya zamanla affiliate / diğer görevleri ekleyebilirsin
+  {
+    id: "affiliate_boinker",
+    type: "affiliate",
+    iconEmoji: "🧠",
+    title: "Visit Boinker",
+    description: "Open Boinker and explore the game.",
+    rewardText: "+1000 coins",
+    url: "https://t.me/boinker_bot?start=_tgr_TiWlA9A5YWY8",
+  },
+  {
+    id: "affiliate_dotcoin",
+    type: "affiliate",
+    iconEmoji: "🟡",
+    title: "Visit DotCoin",
+    description: "Open DotCoin from Telegram.",
+    rewardText: "+1000 coins",
+    url: "https://t.me/dotcoin_bot",
+  },
 ];
 
-// ===============================
-// AdsGram init ve kullanımı
-// ===============================
-function initAdsgram() {
-  if (!window.Adsgram) {
-    console.log("AdsGram SDK bulunamadı (sad.min.js yüklenmemiş olabilir).");
-    return;
-  }
-
-  try {
-    // Rewarded için controller
-    window.AdsgramReward = window.Adsgram.init({
-      blockId: ADSGRAM_BLOCK_ID_REWARDED,
-    });
-
-    // Interstitial için ayrı controller
-    window.AdsgramInterstitial = window.Adsgram.init({
-      blockId: ADSGRAM_BLOCK_ID_INTERSTITIAL,
-    });
-
-    console.log("AdsGram init OK");
-  } catch (err) {
-    console.error("AdsGram init error:", err);
-  }
+// --------- Yardımcı: Dil UI ---------
+function getDict() {
+  return LANG[currentLang] || LANG.en;
 }
 
-// Tap sonrası araya interstitial reklam
-function maybeShowInterstitial() {
-  if (!window.AdsgramInterstitial) return;
+function updateLangUI() {
+  const dict = getDict();
 
-  const now = Date.now();
-  if (now - lastAdTime < AD_INTERVAL_MS) return;
+  const tapBtn = document.getElementById("tap-btn");
+  const upgradeTitle = document.querySelector(".upgrade-section h2");
+  const upgradeBtn = document.getElementById("upgrade-tap-power-btn");
+  const walletTitle = document.querySelector(".wallet-title");
+  const buyTonBtn = document.getElementById("buy-coins-ton-btn");
+  const tasksTitle = document.querySelector(".tasks-title");
+  const tasksSubtitle = document.querySelector(".tasks-subtitle");
+  const tasksOpenBtn = document.getElementById("open-tasks-btn");
+  const tonCreditsLabel = document.querySelector("#user-info .ton-credits-label");
+  const leaderboardTitle = document.querySelector(".leaderboard-title");
 
-  lastAdTime = now;
-  window.AdsgramInterstitial.show().catch((err) => {
-    console.error("Interstitial error:", err);
-  });
-}
+  const cost = getUpgradeCost();
 
-// Rewarded reklam (Daily TON Chest + Turbo vb. için temel fonksiyon)
-function showRewardedAdForTask(taskId) {
-  if (!window.AdsgramReward) {
-    alert("Reklam şu anda hazır değil.");
-    return;
+  if (tapBtn) tapBtn.textContent = dict.tap;
+  if (upgradeTitle) upgradeTitle.textContent = dict.upgrade_title;
+  if (upgradeBtn)
+    upgradeBtn.textContent = `${dict.upgrade_btn_prefix}${cost} coins)`;
+  if (walletTitle) walletTitle.textContent = dict.wallet_title;
+  if (buyTonBtn) buyTonBtn.textContent = dict.buy_ton;
+  if (tasksTitle) tasksTitle.textContent = dict.daily_tasks;
+  if (tasksSubtitle) tasksSubtitle.textContent = dict.daily_sub;
+  if (tasksOpenBtn) tasksOpenBtn.textContent = dict.tasks_button;
+  if (tonCreditsLabel) tonCreditsLabel.textContent = dict.ton_credits_label + ":";
+  if (leaderboardTitle) leaderboardTitle.textContent = dict.leaderboard_title;
+
+  // Task kart metinleri (buton etiketleri)
+  const tasksList = document.getElementById("tasks-list");
+  if (tasksList && tasksList.children.length > 0) {
+    // renderTasksBoard zaten butonları set ediyor, burada ekstra bir şey yapmaya gerek yok
   }
-
-  window.AdsgramReward
-    .show()
-    .then(async (result) => {
-      console.log("Rewarded result:", result);
-      if (!result || !result.done || result.error) {
-        alert("Ödül için reklamı tam izlemelisin.");
-        return;
-      }
-
-      // Reklam başarıyla tamamlanınca backend'e haber ver
-      await notifyBackendRewardAd(taskId);
-    })
-    .catch((err) => {
-      console.error("Reward ad error:", err);
-      alert("Reklam oynatılırken bir hata oluştu.");
-    });
-}
-
-// Daily TON Chest vs. için backend'e kayıt
-async function notifyBackendRewardAd(taskId) {
-  if (!userId) return;
-
-  try {
-    const res = await fetch(API_BASE + "/api/reward/ad", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        telegram_id: userId,
-        task_id: taskId, // örn: "daily_ton_chest"
-      }),
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      console.error("reward/ad failed:", data);
-      if (data.detail === "DAILY_LIMIT_REACHED") {
-        alert(tr("chest_limit_reached"));
-      }
-      return;
-    }
-
-    if (data.user) {
-      userState = data.user;
-      renderUser();
-    }
-
-    if (data.task_status) {
-      taskStatusMap[taskId] = data.task_status;
-      renderTasks();
-    }
-
-    alert("+0.1 TON yüklendi!");
-  } catch (err) {
-    console.error("notifyBackendRewardAd error:", err);
-  }
-}
-
-// ===============================
-// Dil yardımcıları
-// ===============================
-function tr(key) {
-  const dict = LANG[currentLang] || LANG.en;
-  return dict[key] ?? key;
 }
 
 function initLanguageSelector() {
   const chips = document.querySelectorAll(".lang-chip");
   chips.forEach((chip) => {
     const lang = chip.dataset.lang;
-    if (lang === currentLang) chip.classList.add("active");
-
-    chip.addEventListener("click", () => {
+    chip.classList.toggle("active", lang === currentLang);
+    chip.onclick = () => {
       currentLang = lang;
       localStorage.setItem("tap_lang", currentLang);
       chips.forEach((c) =>
         c.classList.toggle("active", c.dataset.lang === currentLang)
       );
-      updateLangTexts();
-      renderTasks();
-    });
+      updateLangUI();
+    };
   });
 }
 
-function updateLangTexts() {
-  const levelLabel = document.querySelector('[data-i18n="level-label"]');
-  const coinsLabel = document.querySelector('[data-i18n="coins-label"]');
-  const powerLabel = document.querySelector('[data-i18n="power-label"]');
-  const tonLabel = document.querySelector('[data-i18n="ton-label"]');
-  const tasksTitle = document.querySelector('[data-i18n="tasks-title"]');
-  const tasksButton = document.getElementById("open-tasks-btn");
-  const tapBtn = document.getElementById("tap-btn");
-  const leaderboardTitle = document.querySelector(
-    '[data-i18n="leaderboard-title"]'
-  );
-  const leaderboardYou = document.querySelector(
-    '[data-i18n="leaderboard-you"]'
-  );
-  const tasksCloseBtn = document.querySelector(
-    "#tasks-modal .modal-footer button"
-  );
-  const leaderboardCloseBtn = document.querySelector(
-    "#leaderboard-modal .modal-footer button"
-  );
-
-  if (levelLabel) levelLabel.textContent = tr("level");
-  if (coinsLabel) coinsLabel.textContent = tr("coins");
-  if (powerLabel) powerLabel.textContent = tr("tap_power");
-  if (tonLabel) tonLabel.textContent = tr("ton_credits");
-  if (tasksTitle) tasksTitle.textContent = tr("daily_tasks");
-  if (tasksButton) tasksButton.textContent = tr("open_tasks");
-  if (tapBtn) tapBtn.textContent = tr("tap");
-  if (leaderboardTitle) leaderboardTitle.textContent = tr("leaderboard_title");
-  if (leaderboardYou) leaderboardYou.textContent = tr("leaderboard_you");
-  if (tasksCloseBtn) tasksCloseBtn.textContent = tr("close");
-  if (leaderboardCloseBtn) leaderboardCloseBtn.textContent = tr("close");
+// --------- AdsGram Başlat ---------
+function initAdsgram() {
+  if (!window.Adsgram) {
+    console.log("AdsGram SDK yok (sad.min.js yüklü mü?)");
+    return;
+  }
+  try {
+    // Reward block
+    AdController = window.Adsgram.init({ blockId: ADSGRAM_REWARD_BLOCK_ID });
+    console.log("AdsGram init OK:", ADSGRAM_REWARD_BLOCK_ID);
+  } catch (err) {
+    console.error("AdsGram init error:", err);
+  }
 }
 
-// ===============================
-// User init & API çağrıları
-// ===============================
-async function initUser() {
+function maybeShowInterstitial() {
+  if (!window.Adsgram) return;
+  const now = Date.now();
+  if (now - lastInterstitialTime < INTERSTITIAL_INTERVAL_MS) return;
+
+  lastInterstitialTime = now;
   try {
-    if (tg?.initDataUnsafe?.user?.id) {
-      userId = tg.initDataUnsafe.user.id;
-    } else {
-      const saved = localStorage.getItem("tap_user_id");
-      if (saved) {
-        userId = parseInt(saved, 10);
+    const interstitialController = window.Adsgram.init({
+      blockId: ADSGRAM_INTERSTITIAL_BLOCK_ID,
+    });
+    interstitialController
+      .show()
+      .then((res) => console.log("Interstitial OK:", res))
+      .catch((err) => console.error("Interstitial error:", err));
+  } catch (err) {
+    console.error("Interstitial init error:", err);
+  }
+}
+
+function showRewardAd(onDone) {
+  if (!AdController) {
+    alert("Ad is not ready yet. Please try again later.");
+    return;
+  }
+  AdController.show()
+    .then((result) => {
+      console.log("Reward ad result:", result);
+      if (result && result.done && !result.error) {
+        if (typeof onDone === "function") onDone();
       } else {
-        userId = Math.floor(Math.random() * 1_000_000_000);
-        localStorage.setItem("tap_user_id", String(userId));
+        alert("You need to watch the ad completely to get a reward.");
       }
+    })
+    .catch((err) => {
+      console.error("Reward ad error:", err);
+      alert("An error occurred while playing the ad.");
+    });
+}
+
+// --------- TON Wallet (frontend iskelet) ---------
+let tonConnectUI = null;
+let connectedWalletAddress = null;
+
+const TONCONNECT_MANIFEST_URL =
+  "https://ton-connect.github.io/demo-dapp-with-react-ui/tonconnect-manifest.json";
+
+function initTonConnect() {
+  try {
+    const container = document.getElementById("ton-connect-button");
+    if (!container || !window.TON_CONNECT_UI) {
+      console.log("TonConnect UI veya container yok.");
+      return;
     }
 
-    await fetchUser();
-    await fetchTaskStatuses();
-    await fetchLeaderboard();
+    tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+      manifestUrl: TONCONNECT_MANIFEST_URL,
+      buttonRootId: "ton-connect-button",
+    });
+
+    tonConnectUI.onStatusChange((wallet) => {
+      const addrEl = document.getElementById("wallet-address");
+      if (wallet) {
+        connectedWalletAddress = wallet.account.address;
+        if (addrEl) addrEl.textContent = "Wallet: " + connectedWalletAddress;
+      } else {
+        connectedWalletAddress = null;
+        if (addrEl) addrEl.textContent = "";
+      }
+    });
   } catch (err) {
-    console.error("initUser error:", err);
+    console.error("TonConnect init error:", err);
   }
+}
+
+// --------- Kullanıcı / Seviye / Tap ---------
+function getUpgradeCost() {
+  if (!userState || typeof userState.tap_power !== "number") return 1000;
+  const level = userState.level || 1;
+  // Önerdiğin gibi: 0→1:1000, 1→2:2000, 2→3:3000...
+  return (level + 1) * 1000;
+}
+
+async function initUser() {
+  // Telegram içinden geldiyse
+  if (tg?.initDataUnsafe?.user?.id) {
+    userId = tg.initDataUnsafe.user.id;
+  } else {
+    const saved = localStorage.getItem("tap_user_id");
+    if (saved) {
+      userId = parseInt(saved, 10);
+    } else {
+      userId = Math.floor(Math.random() * 1_000_000_000);
+      localStorage.setItem("tap_user_id", String(userId));
+    }
+  }
+
+  await fetchUser();
 }
 
 async function fetchUser() {
   if (!userId) return;
   try {
-    const res = await fetch(API_BASE + "/api/me?telegram_id=" + userId);
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      console.error("/api/me error:", data);
-      return;
-    }
+    const res = await fetch(`${API_BASE}/api/me?telegram_id=${userId}`);
+    if (!res.ok) throw new Error("get /api/me failed");
+    const data = await res.json();
     userState = data;
     renderUser();
   } catch (err) {
@@ -319,20 +296,16 @@ async function fetchUser() {
 async function tapOnce() {
   if (!userId) return;
   try {
-    const res = await fetch(API_BASE + "/api/tap", {
+    const res = await fetch(`${API_BASE}/api/tap`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ telegram_id: userId, taps: 1 }),
     });
-
-    const data = await res.json().catch(() => ({}));
-
     if (!res.ok) {
-      console.error("/api/tap error:", data);
-      alert(tr("tap_failed"));
+      alert("Tap failed, please try again.");
       return;
     }
-
+    const data = await res.json();
     if (data.user) {
       userState = data.user;
       renderUser();
@@ -345,27 +318,27 @@ async function tapOnce() {
     }
   } catch (err) {
     console.error("tapOnce error:", err);
-    alert(tr("tap_failed"));
   }
 }
 
-// Level atlama için backend tarafında /api/upgrade/tap_power da var; istersen kullanırsın.
 async function upgradeTapPower() {
   if (!userId) return;
   try {
-    const res = await fetch(API_BASE + "/api/upgrade/tap_power", {
+    const res = await fetch(`${API_BASE}/api/upgrade/tap_power`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ telegram_id: userId }),
     });
-    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      console.error("upgrade error:", data);
-      if (data.detail === "NOT_ENOUGH_COINS") {
-        alert(tr("not_enough_coins"));
+      const errData = await res.json().catch(() => ({}));
+      if (errData.detail === "NOT_ENOUGH_COINS") {
+        alert("Not enough coins!");
+        return;
       }
+      alert("Upgrade failed.");
       return;
     }
+    const data = await res.json();
     if (data.user) {
       userState = data.user;
       renderUser();
@@ -375,131 +348,42 @@ async function upgradeTapPower() {
   }
 }
 
-// Görev statüleri
-async function fetchTaskStatuses() {
-  if (!userId) return;
-  try {
-    const res = await fetch(
-      API_BASE + "/api/tasks/status?telegram_id=" + userId
-    );
-    const data = await res.json().catch(() => []);
-    if (!res.ok) {
-      console.error("/api/tasks/status error:", data);
-      return;
-    }
+function renderUser() {
+  if (!userState) return;
 
-    data.forEach((row) => {
-      taskStatusMap[row.task_id] = row.status;
-    });
+  const levelEl = document.getElementById("level");
+  const coinsEl = document.getElementById("coins");
+  const powerEl = document.getElementById("tap_power");
+  const tonCreditsEl = document.getElementById("ton_credits");
+  const tonPillEl = document.getElementById("ton-pill-value");
+  const levelBarFill = document.getElementById("level-bar-fill");
 
-    renderTasks();
-  } catch (err) {
-    console.error("fetchTaskStatuses error:", err);
+  if (levelEl) levelEl.textContent = userState.level ?? 1;
+  if (coinsEl) coinsEl.textContent = userState.coins ?? 0;
+  if (powerEl) powerEl.textContent = userState.tap_power ?? 1;
+
+  const tonCredits = userState.ton_credits ?? 0;
+  if (tonCreditsEl) tonCreditsEl.textContent = tonCredits.toFixed(2);
+  if (tonPillEl) tonPillEl.textContent = tonCredits.toFixed(2);
+
+  // Level progress bar (coins / next level cost)
+  if (levelBarFill) {
+    const cost = getUpgradeCost();
+    const currentCoins = userState.coins ?? 0;
+    let ratio = Math.min(currentCoins / cost, 1);
+    levelBarFill.style.width = `${(ratio * 100).toFixed(0)}%`;
   }
+
+  updateLangUI();
 }
 
-async function checkTask(taskId) {
-  if (!userId) return;
-  try {
-    const res = await fetch(API_BASE + "/api/tasks/check", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ telegram_id: userId, task_id: taskId }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      console.error("checkTask error:", data);
-      return;
-    }
-    if (data.task_status) {
-      taskStatusMap[taskId] = data.task_status;
-      renderTasks();
-    }
-  } catch (err) {
-    console.error("checkTask error:", err);
-  }
-}
+// --------- Günlük Görevler ---------
+function renderTasksBoard() {
+  const container = document.getElementById("tasks-list");
+  if (!container) return;
+  container.innerHTML = "";
 
-async function claimTask(taskId) {
-  if (!userId) return;
-  try {
-    const res = await fetch(API_BASE + "/api/tasks/claim", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ telegram_id: userId, task_id: taskId }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      console.error("claimTask error:", data);
-      if (data.detail === "TASK_NOT_READY") {
-        alert(tr("task_not_ready"));
-      }
-      return;
-    }
-    if (data.user) {
-      userState = data.user;
-      renderUser();
-    }
-    if (data.task_status) {
-      taskStatusMap[taskId] = data.task_status;
-      renderTasks();
-    }
-  } catch (err) {
-    console.error("claimTask error:", err);
-  }
-}
-
-// Leaderboard
-async function fetchLeaderboard() {
-  try {
-    const res = await fetch(API_BASE + "/api/leaderboard");
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      console.error("/api/leaderboard error:", data);
-      return;
-    }
-    renderLeaderboard(data);
-  } catch (err) {
-    console.error("fetchLeaderboard error:", err);
-  }
-}
-
-// ===============================
-// TonConnect init
-// ===============================
-function initTonConnect() {
-  try {
-    const container = document.getElementById("ton-connect-button");
-    if (!container || !window.TON_CONNECT_UI) {
-      console.log("TonConnectUI veya container yok.");
-      return;
-    }
-
-    tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-      manifestUrl: TONCONNECT_MANIFEST_URL,
-      buttonRootId: "ton-connect-button",
-    });
-
-    tonConnectUI.onStatusChange((wallet) => {
-      if (wallet) {
-        connectedWalletAddress = wallet.account.address;
-        console.log("Connected wallet:", connectedWalletAddress);
-      } else {
-        connectedWalletAddress = null;
-      }
-    });
-  } catch (err) {
-    console.error("TonConnect init error:", err);
-  }
-}
-
-// ===============================
-// Daily Tasks UI
-// ===============================
-function renderTasks() {
-  const list = document.getElementById("tasks-list");
-  if (!list) return;
-  list.innerHTML = "";
+  const dict = getDict();
 
   TASKS.forEach((task) => {
     const status = taskStatusMap[task.id] || "pending";
@@ -509,195 +393,324 @@ function renderTasks() {
 
     const icon = document.createElement("div");
     icon.className = "task-icon";
-    icon.textContent = task.icon;
+    icon.textContent = task.iconEmoji || "⭐";
 
     const main = document.createElement("div");
     main.className = "task-main";
 
     const titleEl = document.createElement("p");
     titleEl.className = "task-title";
-    titleEl.textContent = tr(task.titleKey);
+    titleEl.textContent = task.title;
 
-    const descRow = document.createElement("div");
-    descRow.className = "task-desc-row";
-
-    const descEl = document.createElement("span");
+    const descEl = document.createElement("p");
     descEl.className = "task-desc";
-    descEl.textContent = tr(task.descKey);
-
-    const infoIcon = document.createElement("span");
-    infoIcon.className = "task-info-icon";
-    infoIcon.textContent = "ⓘ";
-    infoIcon.title = task.rewardText;
-
-    descRow.appendChild(descEl);
-    descRow.appendChild(infoIcon);
+    descEl.textContent = task.description;
 
     const rewardEl = document.createElement("div");
     rewardEl.className = "task-reward";
     rewardEl.textContent = task.rewardText;
 
     main.appendChild(titleEl);
-    main.appendChild(descRow);
+    main.appendChild(descEl);
     main.appendChild(rewardEl);
 
     const actions = document.createElement("div");
     actions.className = "task-actions";
 
-    if (task.kind === "reward_ad") {
+    if (task.type === "chest") {
       const btn = document.createElement("button");
-      btn.className = "task-btn primary";
-      btn.textContent = tr("watch_ad");
-      btn.addEventListener("click", () => showRewardedAdForTask(task.id));
+      btn.className = "task-cta-btn";
+      btn.textContent = dict.chest_btn;
+      btn.onclick = () => handleDailyChest();
       actions.appendChild(btn);
-    } else if (task.kind === "invite") {
+    } else if (task.type === "reward") {
+      const btn = document.createElement("button");
+      btn.className = "task-cta-btn";
+      btn.textContent = dict.watch_ad_btn;
+      btn.onclick = () => handleRewardAdTask();
+      actions.appendChild(btn);
+    } else if (task.type === "invite") {
       const goBtn = document.createElement("button");
-      goBtn.className = "task-btn primary";
-      goBtn.textContent = tr("invite_go");
-      goBtn.addEventListener("click", () => openInviteShare());
-      actions.appendChild(goBtn);
+      goBtn.className = "task-cta-btn";
+      goBtn.textContent = dict.go_btn;
+      goBtn.onclick = () => handleInviteGo();
 
       const checkBtn = document.createElement("button");
-      checkBtn.className = "task-btn";
-      checkBtn.textContent = tr("invite_check");
-      checkBtn.disabled = status === "claimed";
-      checkBtn.addEventListener("click", () => checkTask(task.id));
-      actions.appendChild(checkBtn);
+      checkBtn.className = "task-cta-btn";
+      checkBtn.textContent = dict.check_btn;
+      checkBtn.onclick = () => handleCheckTask(task.id);
 
       const claimBtn = document.createElement("button");
-      claimBtn.className = "task-btn";
-      claimBtn.textContent = tr("invite_claim");
+      claimBtn.className = "task-cta-btn";
+      claimBtn.textContent = dict.claim_btn;
       claimBtn.disabled = status !== "checked";
-      claimBtn.addEventListener("click", () => claimTask(task.id));
+      claimBtn.onclick = () => handleClaimTask(task.id);
+
+      actions.appendChild(goBtn);
+      actions.appendChild(checkBtn);
+      actions.appendChild(claimBtn);
+    } else if (task.type === "affiliate") {
+      const goBtn = document.createElement("button");
+      goBtn.className = "task-cta-btn";
+      goBtn.textContent = dict.go_btn;
+      goBtn.onclick = () => openAffiliate(task.url);
+
+      const checkBtn = document.createElement("button");
+      checkBtn.className = "task-cta-btn";
+      checkBtn.textContent = dict.check_btn;
+      checkBtn.onclick = () => handleCheckTask(task.id);
+
+      const claimBtn = document.createElement("button");
+      claimBtn.className = "task-cta-btn";
+      claimBtn.textContent = dict.claim_btn;
+      claimBtn.disabled = status !== "checked";
+      claimBtn.onclick = () => handleClaimTask(task.id);
+
+      actions.appendChild(goBtn);
+      actions.appendChild(checkBtn);
       actions.appendChild(claimBtn);
     }
 
     card.appendChild(icon);
     card.appendChild(main);
     card.appendChild(actions);
-    list.appendChild(card);
+    container.appendChild(card);
   });
 }
 
-function openInviteShare() {
+function handleDailyChest() {
   if (!userId) return;
-  const refLink =
-    "https://t.me/TaptoEarnTonBot?start=ref_" + encodeURIComponent(userId);
 
-  const msg =
-    currentLang === "tr"
-      ? `Tap to Earn TON oyununa katıl! Benim referansımla başla: ${refLink}`
-      : `Join Tap to Earn TON! Start with my referral link: ${refLink}`;
-
-  if (tg && tg.shareUrl) {
-    tg.shareUrl(refLink, msg);
-  } else if (tg && tg.openTelegramLink) {
-    tg.openTelegramLink(
-      "https://t.me/share/url?url=" +
-        encodeURIComponent(refLink) +
-        "&text=" +
-        encodeURIComponent(msg)
-    );
-  } else {
-    window.open(refLink, "_blank");
-  }
-}
-
-// ===============================
-// Leaderboard UI
-// ===============================
-function renderLeaderboard(payload) {
-  const list = document.getElementById("leaderboard-list");
-  const youLine = document.getElementById("leaderboard-you-line");
-  if (!list || !youLine) return;
-
-  const top = payload.top || [];
-  const rank = payload.rank; // kendi sıran (int veya null)
-
-  list.innerHTML = "";
-
-  top.forEach((row, idx) => {
-    const item = document.createElement("div");
-    item.className = "leaderboard-item";
-
-    const left = document.createElement("span");
-    left.className = "leaderboard-rank";
-    left.textContent = `${idx + 1}.`;
-
-    const mid = document.createElement("span");
-    mid.className = "leaderboard-name";
-    mid.textContent = row.display_name || `User ${row.telegram_id}`;
-
-    const right = document.createElement("span");
-    right.className = "leaderboard-coins";
-    right.textContent = `${row.coins} 🪙`;
-
-    item.appendChild(left);
-    item.appendChild(mid);
-    item.appendChild(right);
-
-    list.appendChild(item);
+  // Önce reklam → sonra backend'ten 0.01 TON iste
+  showRewardAd(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/daily_ton_chest`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telegram_id: userId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data.detail === "DAILY_LIMIT_REACHED") {
+          alert("Daily TON Chest limit reached for today.");
+          return;
+        }
+        alert("Chest failed.");
+        return;
+      }
+      const data = await res.json();
+      if (data.user) {
+        userState = data.user;
+        renderUser();
+      }
+      alert("You received +0.01 TON!");
+    } catch (err) {
+      console.error("daily chest error:", err);
+    }
   });
+}
 
-  if (rank && rank > 0) {
-    youLine.textContent = `${tr("leaderboard_you")}: #${rank}`;
+function handleRewardAdTask() {
+  if (!userId) return;
+  showRewardAd(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/reward/ad`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telegram_id: userId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data.detail === "DAILY_LIMIT_REACHED") {
+          alert("Daily video ad limit reached.");
+          return;
+        }
+        alert("Reward failed.");
+        return;
+      }
+      const data = await res.json();
+      if (data.user) {
+        userState = data.user;
+        renderUser();
+      }
+      alert("Reward added!");
+    } catch (err) {
+      console.error("reward/ad error:", err);
+    }
+  });
+}
+
+function openAffiliate(url) {
+  if (!url) return;
+  if (tg?.openTelegramLink) tg.openTelegramLink(url);
+  else window.open(url, "_blank");
+}
+
+function handleInviteGo() {
+  if (!userId) return;
+  const baseBot = "https://t.me/TaptoEarnTonBot";
+  const refLink = `${baseBot}?start=${userId}`;
+  const shareLink = `https://t.me/share/url?url=${encodeURIComponent(
+    refLink
+  )}&text=${encodeURIComponent(
+    "Join Tap to Earn TON and start earning by tapping!"
+  )}`;
+
+  if (tg?.openTelegramLink) {
+    tg.openTelegramLink(shareLink);
+  } else if (navigator.share) {
+    navigator
+      .share({ title: "Tap to Earn TON", text: "Join the game!", url: refLink })
+      .catch(() => {});
   } else {
-    youLine.textContent = tr("no_rank");
+    window.open(shareLink, "_blank");
   }
 }
 
-// ===============================
-// User render
-// ===============================
-function renderUser() {
-  if (!userState) return;
-
-  const levelEl = document.getElementById("level");
-  const coinsEl = document.getElementById("coins");
-  const powerEl = document.getElementById("tap_power");
-  const tonEl = document.getElementById("ton_credits");
-  const tonPillEl = document.getElementById("ton-pill-amount");
-  const levelProgress = document.getElementById("level-progress-bar");
-
-  if (levelEl) levelEl.textContent = userState.level ?? 1;
-  if (coinsEl) coinsEl.textContent = userState.coins ?? 0;
-  if (powerEl) powerEl.textContent = userState.tap_power ?? 1;
-
-  const tonVal = userState.ton_credits ?? 0;
-  if (tonEl) tonEl.textContent = tonVal.toFixed(2);
-  if (tonPillEl) tonPillEl.textContent = tonVal.toFixed(2) + " TON";
-
-  // Level progress (örnek: level başına 1000 * level coin hedefi)
-  if (levelProgress) {
-    const level = userState.level ?? 1;
-    const coins = userState.coins ?? 0;
-    const currentLevelCost = level * 1000;
-    const nextLevelCost = (level + 1) * 1000;
-    const span = nextLevelCost - currentLevelCost || 1;
-    const progressRaw = ((coins - currentLevelCost) / span) * 100;
-    const progress = Math.max(0, Math.min(100, progressRaw));
-    levelProgress.style.width = progress + "%";
+async function handleCheckTask(taskId) {
+  if (!userId) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/tasks/check`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegram_id: userId, task_id: taskId }),
+    });
+    if (!res.ok) {
+      alert("Task check failed.");
+      return;
+    }
+    const data = await res.json();
+    taskStatusMap[taskId] = data.task_status || "checked";
+    renderTasksBoard();
+    alert("Task checked. If everything is OK, now you can claim.");
+  } catch (err) {
+    console.error("checkTask error:", err);
   }
-
-  updateLangTexts();
 }
 
-// ===============================
-// Modal helpers
-// ===============================
+async function handleClaimTask(taskId) {
+  if (!userId) return;
+
+  // UI seviyesinde de zorunlu: önce "checked" olmalı
+  if (taskStatusMap[taskId] !== "checked") {
+    alert("You must CHECK the task before claiming.");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/tasks/claim`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegram_id: userId, task_id: taskId }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (data.detail === "TASK_NOT_READY") {
+        alert("Task is not ready. Please CHECK first.");
+        return;
+      }
+      alert("Task claim failed.");
+      return;
+    }
+    const data = await res.json();
+    taskStatusMap[taskId] = data.task_status || "claimed";
+    if (data.user) {
+      userState = data.user;
+      renderUser();
+    }
+    renderTasksBoard();
+    alert(`Task completed! +${data.reward_coins || 0} coins added.`);
+  } catch (err) {
+    console.error("claimTask error:", err);
+  }
+}
+
+// --------- Leaderboard ---------
+async function openLeaderboard() {
+  const modal = document.getElementById("leaderboard-modal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+
+  const listEl = document.getElementById("leaderboard-list");
+  const meRowEl = document.getElementById("leaderboard-me-row");
+  if (listEl) listEl.innerHTML = "";
+  if (meRowEl) meRowEl.innerHTML = "";
+
+  try {
+    const url = userId
+      ? `${API_BASE}/api/leaderboard?telegram_id=${userId}`
+      : `${API_BASE}/api/leaderboard`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("leaderboard failed");
+    const data = await res.json();
+
+    const top = data.top || [];
+    const me = data.me || null;
+
+    if (listEl) {
+      top.forEach((entry, idx) => {
+        const row = document.createElement("div");
+        row.className = "leaderboard-row";
+
+        const rank = document.createElement("span");
+        rank.className = "lb-rank";
+        rank.textContent = entry.rank ?? idx + 1;
+
+        const name = document.createElement("span");
+        name.className = "lb-name";
+        name.textContent = entry.username || `User ${entry.telegram_id}`;
+
+        const coins = document.createElement("span");
+        coins.className = "lb-coins";
+        coins.textContent = (entry.coins ?? 0) + " coins";
+
+        row.appendChild(rank);
+        row.appendChild(name);
+        row.appendChild(coins);
+
+        listEl.appendChild(row);
+      });
+    }
+
+    if (me && meRowEl) {
+      const row = document.createElement("div");
+      row.className = "leaderboard-row me-row";
+
+      const rank = document.createElement("span");
+      rank.className = "lb-rank";
+      rank.textContent = me.rank ?? "-";
+
+      const name = document.createElement("span");
+      name.className = "lb-name";
+      name.textContent = me.username || `You (${me.telegram_id})`;
+
+      const coins = document.createElement("span");
+      coins.className = "lb-coins";
+      coins.textContent = (me.coins ?? 0) + " coins";
+
+      row.appendChild(rank);
+      row.appendChild(name);
+      row.appendChild(coins);
+
+      meRowEl.appendChild(row);
+    }
+  } catch (err) {
+    console.error("leaderboard error:", err);
+  }
+}
+
+// --------- Modal helpers ---------
 function openModal(id) {
   const el = document.getElementById(id);
-  if (el) el.classList.add("open");
+  if (el) el.classList.remove("hidden");
 }
 
 function closeModal(id) {
   const el = document.getElementById(id);
-  if (el) el.classList.remove("open");
+  if (el) el.classList.add("hidden");
 }
 
-// ===============================
-// DOMContentLoaded
-// ===============================
+// --------- DOMContentLoaded ---------
 document.addEventListener("DOMContentLoaded", () => {
   if (tg) {
     try {
@@ -707,42 +720,32 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // butonlar
   const tapBtn = document.getElementById("tap-btn");
-  const upgradeBtn = document.getElementById("upgrade-btn");
-  const openTasksBtn = document.getElementById("open-tasks-btn");
-  const walletIconBtn = document.getElementById("wallet-icon-btn");
-  const openLeaderboardBtn = document.getElementById("open-leaderboard-btn");
-
-  const modals = document.querySelectorAll(".modal");
-  const closeButtons = document.querySelectorAll("[data-close-modal]");
+  const upgradeBtn = document.getElementById("upgrade-tap-power-btn");
+  const tasksBtn = document.getElementById("open-tasks-btn");
+  const walletBtn = document.getElementById("wallet-open-btn");
+  const leaderboardBtn = document.getElementById("open-leaderboard-btn");
+  const closeButtons = document.querySelectorAll(".overlay-close");
 
   if (tapBtn) tapBtn.addEventListener("click", tapOnce);
   if (upgradeBtn) upgradeBtn.addEventListener("click", upgradeTapPower);
-  if (openTasksBtn)
-    openTasksBtn.addEventListener("click", () => openModal("tasks-modal"));
-  if (walletIconBtn)
-    walletIconBtn.addEventListener("click", () => openModal("wallet-modal"));
-  if (openLeaderboardBtn)
-    openLeaderboardBtn.addEventListener("click", () =>
-      openModal("leaderboard-modal")
-    );
+  if (tasksBtn)
+    tasksBtn.addEventListener("click", () => {
+      openModal("tasks-modal");
+      renderTasksBoard();
+    });
+  if (walletBtn)
+    walletBtn.addEventListener("click", () => openModal("wallet-modal"));
+  if (leaderboardBtn)
+    leaderboardBtn.addEventListener("click", () => openLeaderboard());
 
   closeButtons.forEach((btn) => {
-    const target = btn.getAttribute("data-close-modal");
+    const target = btn.getAttribute("data-close");
     btn.addEventListener("click", () => closeModal(target));
   });
 
-  modals.forEach((m) => {
-    m.addEventListener("click", (e) => {
-      if (e.target.classList.contains("modal")) {
-        m.classList.remove("open");
-      }
-    });
-  });
-
   initLanguageSelector();
-  updateLangTexts();
+  updateLangUI();
   initUser();
   initTonConnect();
   initAdsgram();
