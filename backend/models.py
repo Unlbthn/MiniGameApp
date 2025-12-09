@@ -1,67 +1,50 @@
-# backend/models.py
-
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey
+from datetime import datetime, date
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from datetime import datetime
 
 from .db import Base
 
 
-# --------------------------------------------------------------------
-# USER MODEL
-# --------------------------------------------------------------------
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    telegram_id = Column(String, unique=True, index=True, nullable=False)
+    telegram_id = Column(Integer, unique=True, index=True, nullable=False)
 
-    coins = Column(Integer, default=0)
-    level = Column(Integer, default=1)
-    tap_power = Column(Integer, default=1)
+    # Profil
+    display_name = Column(String, nullable=True)
 
-    ton_balance = Column(Float, default=0.0)
+    # Oyun state
+    level = Column(Integer, default=1, nullable=False)
+    xp = Column(Integer, default=0, nullable=False)
+    next_level_xp = Column(Integer, default=1000, nullable=False)
 
-    # TURBO BOOST (kaldırıldı ama gelecekte gerekirse kalsın)
-    turbo_active = Column(Boolean, default=False)
-    turbo_until = Column(DateTime, nullable=True)
+    coins = Column(Integer, default=0, nullable=False)
+    total_coins = Column(Integer, default=0, nullable=False)
+    tap_power = Column(Integer, default=1, nullable=False)
 
-    # REFERRAL
-    referral_code = Column(String, unique=True)
-    referred_by = Column(String, ForeignKey("users.referral_code"), nullable=True)
+    ton_credits = Column(Float, default=0.0, nullable=False)
 
-    # DAILY CHEST limit
-    daily_chest_used = Column(Integer, default=0)
+    last_tap_at = Column(DateTime, nullable=True)
 
-    # DAILY WATCHED ADS FOR CHEST
-    last_chest_reset = Column(DateTime, default=datetime.utcnow)
+    # Daily chest (günde 1)
+    last_chest_date = Column(Date, nullable=True)
 
-    # Tap cooldown
-    last_tap_time = Column(DateTime, default=datetime.utcnow)
-
-    # Leaderboard caching (opsiyonel)
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     tasks = relationship("TaskStatus", back_populates="user")
 
 
-# --------------------------------------------------------------------
-# TASK STATUS — daily tasks / invite / visit / claim tracking
-# --------------------------------------------------------------------
 class TaskStatus(Base):
     __tablename__ = "task_status"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-
-    task_key = Column(String, index=True)       # example: "daily_chest", "visit_website", "invite_friend"
-    completed = Column(Boolean, default=False)
-    claimed = Column(Boolean, default=False)
-
-    # Extra logic (visit link, click check, etc.)
-    progress = Column(Integer, default=0)
-    required = Column(Integer, default=1)
-
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    task_id = Column(String, index=True, nullable=False)  # e.g. "visit_boinker"
+    status = Column(String, default="pending", nullable=False)  # pending/checked/claimed
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="tasks")
