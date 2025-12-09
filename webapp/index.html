@@ -1,158 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Tap to Earn TON</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <link rel="stylesheet" href="/static/styles.css" />
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="https://unpkg.com/@tonconnect/ui@2.0.0/dist/tonconnect-ui.min.js"></script>
-  <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
-</head>
-<body>
-  <div class="page">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Tap to Earn TON</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <header class="top-bar">
+        <div class="top-left">
+          <!-- Şimdilik burada sadece logo yazı, istersen değiştiririz -->
+          <span class="app-logo">TON</span>
+        </div>
+        <div class="top-right">
+          <button id="wallet-btn" class="icon-btn" title="TON Wallet">
+            👛
+          </button>
+          <button id="leaderboard-btn" class="icon-btn" title="Top 10">
+            🏆
+          </button>
+        </div>
+      </header>
 
-    <!-- TOP BAR -->
-    <header class="top-bar">
-      <button id="wallet-open-btn" class="icon-btn" aria-label="Wallet">
-        💼
-      </button>
-      <div class="top-title">Tap to Earn TON</div>
-      <div class="top-right">
-        <button id="open-leaderboard-btn" class="icon-btn" aria-label="Leaderboard">
-          🏆
-        </button>
+      <main class="card">
         <div class="lang-switch">
           <button class="lang-chip" data-lang="en">EN</button>
           <button class="lang-chip" data-lang="tr">TR</button>
         </div>
-      </div>
-    </header>
 
-    <!-- MAIN CARD -->
-    <main class="main-card">
-      <!-- USER STATS -->
-      <section class="user-card">
-        <div class="user-stats-row">
-          <div class="stat">
-            <span class="stat-label">Level</span>
-            <span class="stat-value" id="level">1</span>
+        <div class="level-header">
+          <div class="level-text">
+            <span id="level-label">Level</span>
+            <span id="level-value">1</span>
           </div>
-          <div class="stat">
-            <span class="stat-label">Coins</span>
+          <div class="level-progress">
+            <div id="level-progress-inner"></div>
+          </div>
+          <p id="next-level-text">Next level: 0 / 1000</p>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-item">
+            <span class="stat-label" id="coins-label">Coins</span>
             <span class="stat-value" id="coins">0</span>
           </div>
-          <div class="stat">
-            <span class="stat-label">Tap Power</span>
+          <div class="stat-item">
+            <span class="stat-label" id="tap-power-label">Tap Power</span>
             <span class="stat-value" id="tap_power">1</span>
           </div>
-          <div class="stat">
-            <span class="stat-label">TON Credits</span>
+          <div class="stat-item">
+            <span class="stat-label" id="ton-credits-label">TON Credits</span>
             <span class="stat-value" id="ton_credits">0.00</span>
           </div>
         </div>
 
-        <!-- LEVEL PROGRESS BAR -->
-        <div class="level-progress">
-          <div class="level-progress-bar">
-            <div id="level-progress-fill" class="level-progress-fill"></div>
-          </div>
-          <div id="level-progress-label" class="level-progress-label">
-            Next level: 0 / 1000
-          </div>
-        </div>
-      </section>
+        <button id="tap-btn" class="tap-button">TAP</button>
 
-      <!-- TAP BUTTON -->
-      <section class="tap-section">
-        <button id="tap-btn" class="tap-btn">
-          TAP
-        </button>
-        <p class="tap-hint">
-          Every 100 taps shows an ad and boosts your earnings.
-        </p>
-      </section>
+        <section class="upgrade-section">
+          <h2 id="upgrade-title">Upgrade</h2>
+          <button id="upgrade-tap-power-btn" class="primary-btn">
+            Increase Tap Power
+          </button>
+          <p id="upgrade-hint" class="small-text">
+            Every 100 taps shows an ad and boosts your earnings.
+          </p>
+        </section>
 
-      <!-- ACTIONS -->
-      <section class="actions-section">
-        <button id="upgrade-tap-power-btn" class="primary-btn">
-          Increase Tap Power (cost: 100 coins)
-        </button>
-
-        <button id="open-tasks-btn" class="secondary-btn">
-          Daily Tasks
-        </button>
-      </section>
-    </main>
-  </div>
-
-  <!-- WALLET MODAL -->
-  <div id="wallet-modal" class="overlay hidden">
-    <div class="overlay-inner">
-      <div class="overlay-header">
-        <h2>TON Wallet</h2>
-        <button class="overlay-close" data-close="wallet-modal">&times;</button>
-      </div>
-      <div class="overlay-body">
-        <p>Connect your TON wallet to receive real TON withdrawals.</p>
-        <div id="ton-connect-button"></div>
-        <p id="wallet-address" class="wallet-address"></p>
-      </div>
+        <section class="actions-section">
+          <button id="daily-chest-btn" class="secondary-btn">
+            Daily TON Chest
+          </button>
+          <button id="daily-tasks-btn" class="secondary-btn">
+            Daily Tasks
+          </button>
+        </section>
+      </main>
     </div>
-  </div>
 
-  <!-- TASKS MODAL -->
-  <div id="tasks-modal" class="overlay hidden">
-    <div class="overlay-inner">
-      <div class="overlay-header">
-        <h2 class="tasks-title">Daily Tasks</h2>
-        <button class="overlay-close" data-close="tasks-modal">&times;</button>
-      </div>
-      <div class="overlay-body">
-        <p class="tasks-subtitle">
-          Complete tasks to earn extra coins and TON credits.
+    <!-- Tasks Modal -->
+    <div id="tasks-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="tasks-title">Daily Tasks</h2>
+          <button
+            class="icon-btn close-btn"
+            data-close="tasks-modal"
+            aria-label="Close"
+          >
+            ✖
+          </button>
+        </div>
+        <p id="tasks-subtitle" class="modal-subtitle">
+          Complete tasks to earn extra coins.
         </p>
         <div id="tasks-list" class="tasks-list"></div>
       </div>
     </div>
-  </div>
 
-  <!-- LEADERBOARD MODAL -->
-  <div id="leaderboard-modal" class="overlay hidden">
-    <div class="overlay-inner">
-      <div class="overlay-header">
-        <h2>Top 10 Players</h2>
-        <button class="overlay-close" data-close="leaderboard-modal">&times;</button>
-      </div>
-      <div class="overlay-body">
+    <!-- Leaderboard Modal -->
+    <div id="leaderboard-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Top 10</h2>
+          <button
+            class="icon-btn close-btn"
+            data-close="leaderboard-modal"
+            aria-label="Close"
+          >
+            ✖
+          </button>
+        </div>
         <div id="leaderboard-list" class="leaderboard-list"></div>
         <div id="leaderboard-me" class="leaderboard-me"></div>
       </div>
     </div>
-  </div>
 
-  <!-- INVITE MODAL (SADE, SIRF LINK GÖSTERİYOR) -->
-  <div id="invite-modal" class="overlay hidden">
-    <div class="overlay-inner">
-      <div class="overlay-header">
-        <h2>Invite Friends</h2>
-        <button class="overlay-close" data-close="invite-modal">&times;</button>
-      </div>
-      <div class="overlay-body">
-        <p>Share this link with your friends:</p>
-        <div class="invite-link-box">
-          <input id="invite-link-input" type="text" readonly />
-          <button id="copy-invite-link-btn" class="secondary-btn small">
-            Copy
+    <!-- Wallet Modal (placeholder) -->
+    <div id="wallet-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>TON Wallet</h2>
+          <button
+            class="icon-btn close-btn"
+            data-close="wallet-modal"
+            aria-label="Close"
+          >
+            ✖
           </button>
         </div>
-        <p class="invite-hint">
-          When your friend reaches 200 coins, you get +0.02 TON.
+        <p class="modal-subtitle">
+          Wallet connection coming soon. You can still earn in-game TON credits.
         </p>
       </div>
     </div>
-  </div>
 
-  <script src="/static/app.js"></script>
-</body>
+    <!-- Toast -->
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="/static/app.js"></script>
+  </body>
 </html>
