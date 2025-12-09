@@ -1,394 +1,328 @@
 // webapp/app.js
-// Tap to Earn TON – Safe & Optimized Frontend
 
-(function () {
-    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+// Küçük yardımcı: element al, yoksa uyar ama hata fırlatma
+function $(id) {
+    const el = document.getElementById(id);
+    if (!el) {
+        console.warn("Missing element with id:", id);
+    }
+    return el;
+}
 
-    // ------- GLOBAL STATE -------
-    let telegramId = null;
+const tg = window.Telegram ? window.Telegram.WebApp : null;
 
-    const userState = {
-        level: 1,
-        coins: 0,
-        tap_power: 1,
-        ton_credits: 0,
-        taps_since_last_ad: 0,
-        next_level_cost: 1000, // level 1 -> 2 için varsayılan
-        rank: null
-    };
+let telegramId = null;
+let state = {
+    level: 1,
+    coins: 0,
+    tapPower: 1,
+    tonCredits: 0,
+    nextLevelRequirement: 1000, // backend'den gelirse override edeceğiz
+};
 
-    // ------- DOM HELPERS -------
-    function $(id) {
-        return document.getElementById(id);
+// DOM referansları
+const tapButton         = $("tapButton");
+const levelValue        = $("levelValue");
+const coinsValue        = $("coinsValue");
+const tapPowerValue     = $("tapPowerValue");
+const tonCreditsValue   = $("tonCreditsValue");
+const levelProgressFill = $("levelProgressFill");
+const nextLevelText     = $("nextLevelText");
+
+const increaseTapBtn    = $("increaseTapPowerBtn");
+const dailyTasksBtn     = $("dailyTasksBtn");
+const dailyTasksModal   = $("dailyTasksModal");
+const dailyTasksClose   = $("dailyTasksClose");
+
+const walletIcon        = $("walletIcon");
+const trophyIcon        = $("trophyIcon");
+const leaderboardModal  = $("leaderboardModal");
+const leaderboardClose  = $("leaderboardClose");
+const leaderboardList   = $("leaderboardList");
+const leaderboardYouRow = $("leaderboardYouRow");
+
+const langEnBtn         = $("langEnBtn");
+const langTrBtn         = $("langTrBtn");
+
+function showError(msg) {
+    console.error(msg);
+    if (tg && typeof tg.showAlert === "function") {
+        tg.showAlert(msg);
+    } else {
+        alert(msg);
+    }
+}
+
+function showToast(msg) {
+    if (tg && typeof tg.showPopup === "function") {
+        tg.showPopup({ message: msg });
+    } else {
+        console.log("Toast:", msg);
+    }
+}
+
+// UI güncelleme
+function updateUI() {
+    if (levelValue)      levelValue.textContent      = state.level;
+    if (coinsValue)      coinsValue.textContent      = state.coins;
+    if (tapPowerValue)   tapPowerValue.textContent   = state.tapPower;
+    if (tonCreditsValue) tonCreditsValue.textContent = state.tonCredits.toFixed(2);
+
+    // Level progress (0–1)
+    if (typeof state.nextLevelRequirement === "number" &&
+        state.nextLevelRequirement > 0 &&
+        levelProgressFill) {
+
+        const currentInLevel = state.coins;
+        const ratio = Math.max(
+            0,
+            Math.min(1, currentInLevel / state.nextLevelRequirement)
+        );
+        levelProgressFill.style.width = (ratio * 100).toFixed(1) + "%";
     }
 
-    function setText(id, value) {
-        const el = $(id);
-        if (el) el.textContent = value;
+    if (nextLevelText) {
+        nextLevelText.textContent = `Next level: ${state.coins} / ${state.nextLevelRequirement}`;
+    }
+}
+
+// Kullanıcıyı backend'den çek
+async function loadUser() {
+    if (!telegramId) {
+        showError("Telegram user id not found. Please open this game inside Telegram.");
+        return;
     }
 
-    function showToast(message) {
-        if (tg && typeof tg.showAlert === "function") {
-            tg.showAlert(message);
-        } else {
-            alert(message);
-        }
-    }
-
-    function safeAddListener(id, event, handler) {
-        const el = $(id);
-        if (el) el.addEventListener(event, handler);
-    }
-
-    // ------- RENDER / UI -------
-    function renderUser() {
-        setText("level-value", userState.level);
-        setText("coins-value", userState.coins);
-        setText("tap-power-value", userState.tap_power);
-        setText("ton-credits-value", userState.ton_credits.toFixed(2));
-
-        // Seviye ilerleme çubuğu (0–1 arası progress)
-        const progressBar = $("level-progress-inner");
-        if (progressBar) {
-            const currentLevelCost = userState.next_level_cost || 1000;
-            // basit mantık: coin / cost (0 ile 1 arası)
-            const progress = Math.max(
-                0,
-                Math.min(1, userState.coins / currentLevelCost)
-            );
-            progressBar.style.width = `${progress * 100}%`;
-        }
-
-        // Top 10 rank display
-        const rankLabel = $("rank-footer-label");
-        if (rankLabel) {
-            if (userState.rank && userState.rank <= 10) {
-                rankLabel.textContent = `You are #${userState.rank} in the Top 10`;
-            } else if (userState.rank) {
-                rankLabel.textContent = `You are #${userState.rank}`;
-            } else {
-                rankLabel.textContent = "";
-            }
-        }
-    }
-
-    // ------- API HELPERS -------
-    async function apiGet(path) {
-        const res = await fetch(path, {
-            method: "GET",
-            headers: {
-                "Accept": "application/json"
-            }
-        });
+    try {
+        const res = await fetch(`/api/me?telegram_id=${telegramId}`);
         if (!res.ok) {
-            const text = await res.text();
-            throw new Error(`GET ${path} failed: ${res.status} ${text}`);
+            throw new Error("Failed to load user: " + res.status);
         }
-        return res.json();
+        const data = await res.json();
+
+        // Backend'den dönen alan isimlerine göre ayarla
+        state.level               = data.level ?? 1;
+        state.coins               = data.coins ?? 0;
+        state.tapPower            = data.tap_power ?? 1;
+        state.tonCredits          = data.ton_credits ?? 0;
+        state.nextLevelRequirement = data.next_level_requirement ?? 1000;
+
+        updateUI();
+    } catch (err) {
+        console.error(err);
+        showError("Could not load player data. Please try again.");
+    }
+}
+
+// TAP handler
+async function handleTap() {
+    if (!telegramId) {
+        showError("Telegram user not detected.");
+        return;
     }
 
-    async function apiPost(path, bodyObj) {
-        const res = await fetch(path, {
+    try {
+        const res = await fetch("/api/tap", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
-            body: JSON.stringify(bodyObj)
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ telegram_id: telegramId })
         });
+
         if (!res.ok) {
-            const text = await res.text();
-            throw new Error(`POST ${path} failed: ${res.status} ${text}`);
+            const txt = await res.text();
+            console.error("Tap failed:", res.status, txt);
+            showError("Tap failed, please try again.");
+            return;
         }
-        return res.json();
-    }
 
-    // ------- INITIAL LOAD -------
-    async function initUser() {
-        try {
-            if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                telegramId = tg.initDataUnsafe.user.id;
-            } else {
-                // fallback – local test için
-                telegramId = 123456;
-            }
+        const data = await res.json();
 
-            const data = await apiGet(`/api/me?telegram_id=${telegramId}`);
+        state.coins               = data.coins ?? state.coins;
+        state.level               = data.level ?? state.level;
+        state.tapPower            = data.tap_power ?? state.tapPower;
+        state.tonCredits          = data.ton_credits ?? state.tonCredits;
+        state.nextLevelRequirement = data.next_level_requirement ?? state.nextLevelRequirement;
 
-            // backend UserOut yapısını userState'e map’liyoruz
-            userState.level = data.level ?? userState.level;
-            userState.coins = data.coins ?? userState.coins;
-            userState.tap_power = data.tap_power ?? data.tapPower ?? userState.tap_power;
-            userState.ton_credits = data.ton_credits ?? data.tonCredits ?? userState.ton_credits;
-            userState.taps_since_last_ad = data.taps_since_last_ad ?? userState.taps_since_last_ad;
-            userState.next_level_cost = data.next_level_cost ?? userState.next_level_cost;
-            userState.rank = data.rank ?? null;
+        updateUI();
 
-            renderUser();
-        } catch (err) {
-            console.error("initUser error:", err);
-            showToast("User verisi alınamadı, lütfen tekrar deneyin.");
+        // 100 tap'te bir reklam bilgisi backend'den geliyorsa:
+        if (data.show_ad) {
+            console.log("Ad hint from backend:", data.show_ad);
         }
+    } catch (err) {
+        console.error(err);
+        showError("Tap error, please try again.");
+    }
+}
+
+// Tap power upgrade handler
+async function handleIncreaseTapPower() {
+    if (!telegramId) {
+        showError("Telegram user not detected.");
+        return;
     }
 
-    // ------- TAP LOGIC -------
-    async function handleTap() {
-        try {
-            if (!telegramId) {
-                showToast("Telegram kullanıcı bilgisi alınamadı.");
-                return;
-            }
+    try {
+        const res = await fetch("/api/upgrade_tap_power", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ telegram_id: telegramId })
+        });
 
-            const tapBtn = $("tap-button");
-            if (tapBtn) tapBtn.disabled = true;
-
-            const data = await apiPost("/api/tap", { telegram_id: telegramId });
-
-            // response yine UserOut benzeri varsayılıyor
-            userState.level = data.level ?? userState.level;
-            userState.coins = data.coins ?? userState.coins;
-            userState.tap_power = data.tap_power ?? data.tapPower ?? userState.tap_power;
-            userState.ton_credits = data.ton_credits ?? data.tonCredits ?? userState.ton_credits;
-            userState.taps_since_last_ad = data.taps_since_last_ad ?? userState.taps_since_last_ad;
-            userState.next_level_cost = data.next_level_cost ?? userState.next_level_cost;
-
-            renderUser();
-        } catch (err) {
-            console.error("tap error:", err);
-            showToast("Tap failed, please try again.");
-        } finally {
-            const tapBtn = $("tap-button");
-            if (tapBtn) tapBtn.disabled = false;
+        if (!res.ok) {
+            const txt = await res.text();
+            console.error("Upgrade failed:", res.status, txt);
+            showError("Not enough coins to upgrade tap power.");
+            return;
         }
+
+        const data = await res.json();
+
+        state.coins    = data.coins ?? state.coins;
+        state.tapPower = data.tap_power ?? state.tapPower;
+        state.level    = data.level ?? state.level;
+        state.nextLevelRequirement = data.next_level_requirement ?? state.nextLevelRequirement;
+
+        updateUI();
+        showToast("Tap power upgraded!");
+    } catch (err) {
+        console.error(err);
+        showError("Upgrade error, please try again.");
+    }
+}
+
+// Daily tasks modal
+function openDailyTasks() {
+    if (dailyTasksModal) {
+        dailyTasksModal.classList.add("visible");
+    }
+}
+
+function closeDailyTasks() {
+    if (dailyTasksModal) {
+        dailyTasksModal.classList.remove("visible");
+    }
+}
+
+// Wallet icon
+function handleWalletClick() {
+    showToast("TON wallet linking will be available soon.");
+    // İleride TonConnect entegrasyonunu buraya koyacağız.
+}
+
+// Leaderboard
+async function openLeaderboard() {
+    if (!telegramId) {
+        showError("Telegram user not detected.");
+        return;
     }
 
-    // ------- UPGRADE (TAP POWER) -------
-    async function handleUpgrade() {
-        try {
-            if (!telegramId) {
-                showToast("Telegram kullanıcı bilgisi alınamadı.");
-                return;
-            }
-            const upBtn = $("upgrade-button");
-            if (upBtn) upBtn.disabled = true;
+    if (!leaderboardModal || !leaderboardList || !leaderboardYouRow) {
+        console.warn("Leaderboard elements missing, skipping openLeaderboard");
+        return;
+    }
 
-            const data = await apiPost("/api/upgrade", { telegram_id: telegramId });
-
-            userState.level = data.level ?? userState.level;
-            userState.coins = data.coins ?? userState.coins;
-            userState.tap_power = data.tap_power ?? data.tapPower ?? userState.tap_power;
-            userState.next_level_cost = data.next_level_cost ?? userState.next_level_cost;
-
-            renderUser();
-        } catch (err) {
-            console.error("upgrade error:", err);
-            showToast("Yükseltme yapılamadı, yeterli coin olmayabilir.");
-        } finally {
-            const upBtn = $("upgrade-button");
-            if (upBtn) upBtn.disabled = false;
+    try {
+        const res = await fetch(`/api/leaderboard?telegram_id=${telegramId}`);
+        if (!res.ok) {
+            const txt = await res.text();
+            console.error("Leaderboard failed:", res.status, txt);
+            showError("Could not load leaderboard.");
+            return;
         }
-    }
 
-    // ------- DAILY CHEST -------
-    async function handleDailyChest() {
-        try {
-            if (!telegramId) {
-                showToast("Telegram kullanıcı bilgisi alınamadı.");
-                return;
-            }
+        const data = await res.json();
+        const top = data.top ?? [];
+        const you = data.you ?? null;
 
-            // Adsgram tetikleme (SDK yüklüyse)
-            if (window.Sad && window.Sad.showRewarded) {
-                window.Sad.showRewarded(
-                    "17996", // reward block id
-                    { userId: String(telegramId) },
-                    async function (result) {
-                        if (!result || !result.done) {
-                            console.log("Reward ad not completed:", result);
-                            showToast("Reklam tamamlanmadı.");
-                            return;
-                        }
-                        try {
-                            const data = await apiPost("/api/daily-chest", {
-                                telegram_id: telegramId
-                            });
+        leaderboardList.innerHTML = "";
 
-                            userState.ton_credits = data.ton_credits ?? userState.ton_credits;
-                            renderUser();
-                            showToast("0.01 TON kredisi eklendi!");
-                        } catch (err) {
-                            console.error("daily chest claim error:", err);
-                            showToast("Chest claim edilemedi, lütfen tekrar deneyin.");
-                        }
-                    }
-                );
-            } else {
-                showToast("Reklam servisi şu anda uygun değil.");
-            }
-        } catch (err) {
-            console.error("daily chest error:", err);
-            showToast("İşlem başarısız, lütfen tekrar deneyin.");
+        top.forEach((user, idx) => {
+            const row = document.createElement("div");
+            row.className = "leaderboard-row";
+            row.innerHTML = `
+                <span class="leaderboard-rank">#${idx + 1}</span>
+                <span class="leaderboard-name">${user.username || "Player"}</span>
+                <span class="leaderboard-score">${user.total_coins ?? 0}💠</span>
+            `;
+            leaderboardList.appendChild(row);
+        });
+
+        if (you) {
+            leaderboardYouRow.textContent =
+                `Your rank: #${you.rank} • Total coins: ${you.total_coins ?? 0}`;
+        } else {
+            leaderboardYouRow.textContent = "Play more to enter the rankings!";
         }
+
+        leaderboardModal.classList.add("visible");
+    } catch (err) {
+        console.error(err);
+        showError("Leaderboard error, please try again.");
+    }
+}
+
+function closeLeaderboard() {
+    if (leaderboardModal) {
+        leaderboardModal.classList.remove("visible");
+    }
+}
+
+// Dil değiştirme (şimdilik sadece buton seçimi)
+function setLanguage(lang) {
+    if (lang === "en") {
+        if (langEnBtn) langEnBtn.classList.add("active");
+        if (langTrBtn) langTrBtn.classList.remove("active");
+    } else {
+        if (langTrBtn) langTrBtn.classList.add("active");
+        if (langEnBtn) langEnBtn.classList.remove("active");
+    }
+    // İleride backend'e language preference gönderebiliriz.
+}
+
+// Başlat
+document.addEventListener("DOMContentLoaded", () => {
+    // Telegram kullanıcıyı al
+    if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        telegramId = tg.initDataUnsafe.user.id;
+        console.log("Telegram user id:", telegramId);
+    } else {
+        console.warn("Telegram WebApp user not found in initDataUnsafe.");
     }
 
-    // ------- DAILY TASKS MODAL -------
-    function openDailyTasks() {
-        const modal = $("tasks-modal");
-        if (!modal) return;
-        modal.classList.add("visible");
+    // Event listeners — element varsa bağla
+    if (tapButton) {
+        tapButton.addEventListener("click", handleTap);
+    }
+    if (increaseTapBtn) {
+        increaseTapBtn.addEventListener("click", handleIncreaseTapPower);
+    }
+    if (dailyTasksBtn) {
+        dailyTasksBtn.addEventListener("click", openDailyTasks);
+    }
+    if (dailyTasksClose) {
+        dailyTasksClose.addEventListener("click", closeDailyTasks);
+    }
+    if (walletIcon) {
+        walletIcon.addEventListener("click", handleWalletClick);
+    }
+    if (trophyIcon) {
+        trophyIcon.addEventListener("click", openLeaderboard);
+    }
+    if (leaderboardClose) {
+        leaderboardClose.addEventListener("click", closeLeaderboard);
     }
 
-    function closeDailyTasks() {
-        const modal = $("tasks-modal");
-        if (!modal) return;
-        modal.classList.remove("visible");
+    if (langEnBtn) {
+        langEnBtn.addEventListener("click", () => setLanguage("en"));
+    }
+    if (langTrBtn) {
+        langTrBtn.addEventListener("click", () => setLanguage("tr"));
     }
 
-    // Nodelar yoksa bile hata almamak için hepsini if’lerle koruyoruz
-    async function handleTaskAction(taskKey, action) {
-        try {
-            if (!telegramId) {
-                showToast("Telegram kullanıcı bilgisi alınamadı.");
-                return;
-            }
-            const data = await apiPost(`/api/tasks/${action}`, {
-                telegram_id: telegramId,
-                task_key: taskKey
-            });
+    // Başlangıç dili
+    setLanguage("en");
 
-            if (data && data.coins != null) {
-                userState.coins = data.coins;
-                renderUser();
-            }
-
-            // butonları UI’da kapatma
-            const checkBtn = $(`${taskKey}-check-btn`);
-            const claimBtn = $(`${taskKey}-claim-btn`);
-
-            if (action === "check" && checkBtn) {
-                checkBtn.disabled = true;
-                checkBtn.textContent = "Checked";
-            }
-            if (action === "claim" && claimBtn) {
-                claimBtn.disabled = true;
-                claimBtn.textContent = "Claimed";
-            }
-        } catch (err) {
-            console.error(`task ${action} error:`, err);
-            showToast("Görev işlemi sırasında hata oluştu.");
-        }
-    }
-
-    // ------- LEADERBOARD -------
-    async function openLeaderboard() {
-        try {
-            const modal = $("leaderboard-modal");
-            const list = $("leaderboard-list");
-            const rankFooter = $("rank-footer-label");
-            if (!modal || !list) return;
-
-            list.innerHTML = "<li>Loading...</li>";
-            modal.classList.add("visible");
-
-            const data = await apiGet("/api/leaderboard");
-            list.innerHTML = "";
-
-            if (!Array.isArray(data.entries) || data.entries.length === 0) {
-                list.innerHTML = "<li>No data yet.</li>";
-            } else {
-                data.entries.forEach((entry, idx) => {
-                    const li = document.createElement("li");
-                    li.className = "leaderboard-item";
-                    li.textContent = `#${entry.rank || idx + 1} – ${entry.username || "User"} – ${entry.total_coins} coins`;
-                    if (entry.telegram_id === telegramId) {
-                        li.classList.add("me");
-                    }
-                    list.appendChild(li);
-                });
-            }
-
-            if (data.user_rank) {
-                userState.rank = data.user_rank;
-                if (rankFooter) {
-                    rankFooter.textContent =
-                        data.user_rank <= 10
-                            ? `You are #${data.user_rank} in Top 10`
-                            : `You are #${data.user_rank}`;
-                }
-            }
-
-        } catch (err) {
-            console.error("leaderboard error:", err);
-            showToast("Leaderboard alınamadı.");
-        }
-    }
-
-    function closeLeaderboard() {
-        const modal = $("leaderboard-modal");
-        if (!modal) return;
-        modal.classList.remove("visible");
-    }
-
-    // ------- WALLET CONNECT -------
-    function openWallet() {
-        // Şimdilik sadece bilgi mesajı; ileride TON Connect entegre edersin
-        showToast("Coming soon: TON wallet bağlama ekranı.");
-    }
-
-    // ------- LANGUAGE SWITCH -------
-    function setLanguage(lang) {
-        const root = document.documentElement;
-        root.setAttribute("data-lang", lang);
-
-        const enBtn = $("lang-en");
-        const trBtn = $("lang-tr");
-        if (enBtn && trBtn) {
-            enBtn.classList.toggle("active", lang === "en");
-            trBtn.classList.toggle("active", lang === "tr");
-        }
-    }
-
-    // ------- INIT SCRIPT -------
-    document.addEventListener("DOMContentLoaded", function () {
-        try {
-            if (tg) {
-                tg.ready();
-                tg.expand();
-            }
-
-            // Event bindings (hepsi safeAddListener ile)
-            safeAddListener("tap-button", "click", handleTap);
-            safeAddListener("upgrade-button", "click", handleUpgrade);
-
-            safeAddListener("daily-chest-button", "click", handleDailyChest);
-            safeAddListener("daily-tasks-button", "click", openDailyTasks);
-            safeAddListener("tasks-close-btn", "click", closeDailyTasks);
-
-            safeAddListener("leaderboard-open-btn", "click", openLeaderboard);
-            safeAddListener("leaderboard-close-btn", "click", closeLeaderboard);
-
-            safeAddListener("wallet-icon", "click", openWallet);
-            safeAddListener("trophy-icon", "click", openLeaderboard);
-
-            safeAddListener("lang-en", "click", () => setLanguage("en"));
-            safeAddListener("lang-tr", "click", () => setLanguage("tr"));
-
-            // Örnek görev butonları, varsa
-            safeAddListener("task-invite-check-btn", "click", () =>
-                handleTaskAction("task-invite", "check")
-            );
-            safeAddListener("task-invite-claim-btn", "click", () =>
-                handleTaskAction("task-invite", "claim")
-            );
-
-            // Varsayılan dili EN yap
-            setLanguage("en");
-
-            // Kullanıcı verisini yükle
-            initUser();
-        } catch (err) {
-            console.error("global init error:", err);
-            showToast("Uygulama başlatılırken hata oluştu.");
-        }
-    });
-})();
+    // Kullanıcı verisini çek
+    loadUser();
+});
