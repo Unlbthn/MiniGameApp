@@ -1,135 +1,422 @@
-body {
+/* styles.css – Tap to Earn TON */
+
+/* Reset */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
     margin: 0;
-    background: #0b0f19;
-    font-family: Arial, sans-serif;
-    color: white;
-    text-align: center;
+    padding: 0;
 }
 
-#header {
+html,
+body {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+        Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(circle at top, #152238 0, #050814 55%, #02030a 100%);
+    color: #f4f6ff;
     display: flex;
-    justify-content: flex-end;
-    padding: 10px;
-    gap: 15px;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Layout container */
+
+.app-root {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 16px;
+}
+
+.game-card {
+    background: linear-gradient(145deg, rgba(20, 32, 60, 0.9), rgba(5, 10, 25, 0.98));
+    border-radius: 24px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+    padding: 16px 18px 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Light glow behind card */
+.game-card::before {
+    content: "";
+    position: absolute;
+    inset: -80%;
+    background: radial-gradient(circle at 20% -10%, rgba(0, 180, 255, 0.16), transparent 65%),
+        radial-gradient(circle at 80% 120%, rgba(140, 90, 255, 0.22), transparent 60%);
+    opacity: 0.9;
+    pointer-events: none;
+}
+
+/* İçerik gerçek layer */
+.game-card-inner {
+    position: relative;
+    z-index: 1;
+}
+
+/* Top bar: level, icons, lang */
+
+.top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.level-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.level-row-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.level-label {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #9fb5ff;
+}
+
+.level-value {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+/* XP progress */
+
+.xp-progress {
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+}
+
+.xp-progress-inner {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #00c6ff, #0072ff);
+    border-radius: inherit;
+    transition: width 0.25s ease-out;
+}
+
+.next-level-label {
+    font-size: 11px;
+    color: #b5c2ff;
+    margin-top: 3px;
+}
+
+/* Right icons & language */
+
+.top-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 8px;
 }
 
 .icon-btn {
     width: 30px;
     height: 30px;
-    cursor: pointer;
-}
-
-#statsBox {
-    margin-top: 10px;
-}
-
-.stat-line {
-    margin: 4px 0;
-    font-size: 15px;
-}
-
-.xp-bar {
-    width: 80%;
-    height: 6px;
-    background: #333;
-    border-radius: 5px;
-    margin: 5px auto 10px;
-}
-
-#xpFill {
-    width: 0%;
-    height: 100%;
-    background: #00a2ff;
-    border-radius: 5px;
-}
-
-#tapButton {
-    width: 180px;
-    height: 180px;
-    border-radius: 50%;
-    background: #1890ff;
+    border-radius: 999px;
     border: none;
-    color: white;
-    font-size: 35px;
-    margin-top: 15px;
+    background: rgba(9, 13, 30, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
+    box-shadow: 0 0 0 1px rgba(79, 115, 255, 0.45);
+    padding: 0;
 }
 
-#every100 {
+.icon-btn img {
+    width: 16px;
+    height: 16px;
+}
+
+.icon-btn:active {
+    transform: translateY(1px) scale(0.98);
+}
+
+/* Lang buttons */
+
+.lang-btn {
+    min-width: 34px;
+    height: 24px;
+    border-radius: 999px;
+    border: none;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0 8px;
+    background: rgba(11, 17, 40, 0.85);
+    color: #d9e3ff;
+    box-shadow: 0 0 0 1px rgba(79, 115, 255, 0.55);
+}
+
+.lang-btn.lang-active {
+    background: linear-gradient(135deg, #00bfff, #0072ff);
+    color: #fff;
+    box-shadow: 0 0 16px rgba(0, 122, 255, 0.7);
+}
+
+/* Stat row */
+
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px 10px;
+    margin-top: 10px;
+    margin-bottom: 16px;
+}
+
+.stat-pill {
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: radial-gradient(circle at 0 0, rgba(166, 209, 255, 0.18), rgba(10, 15, 35, 0.96));
+    border: 1px solid rgba(60, 91, 180, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     font-size: 12px;
+    color: #dde7ff;
+}
+
+.stat-label {
     opacity: 0.7;
 }
 
-#upgradeBox {
-    margin-top: 20px;
+.stat-value {
+    font-weight: 600;
+}
+
+/* TAP button */
+
+.tap-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 12px 0 6px;
+}
+
+.tap-button {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    background: radial-gradient(circle at 30% 20%, #8be4ff, #009dff 40%, #0050ff 80%);
+    color: #021220;
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    box-shadow: 0 20px 45px rgba(0, 130, 255, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
+}
+
+.tap-button:active {
+    transform: translateY(4px) scale(0.97);
+    box-shadow: 0 13px 26px rgba(0, 70, 180, 0.9);
+}
+
+/* Tap helper text */
+
+.tap-helper {
+    margin-top: 8px;
+    text-align: center;
+    font-size: 11px;
+    color: #8ea0ff;
+}
+
+/* Bottom buttons */
+
+.bottom-actions {
+    margin-top: 14px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
 }
 
-#upgradeBox button {
-    background: #1e2a3e;
-    border: solid 1px #314866;
-    padding: 10px;
-    color: white;
-    border-radius: 10px;
-    cursor: pointer;
-}
-
-.popup {
-    position: fixed;
-    top: 0;
-    left: 0;
+.primary-btn,
+.secondary-btn {
     width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.65);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.popupInner {
-    background: #1c2233;
-    padding: 20px;
-    width: 85%;
-    border-radius: 12px;
-}
-
-.hidden {
-    display: none;
-}
-
-.closeBtn {
-    float: right;
-    background: none;
+    border-radius: 999px;
+    height: 38px;
     border: none;
-    font-size: 30px;
-    color: white;
+    font-size: 13px;
+    font-weight: 500;
     cursor: pointer;
+}
+
+.primary-btn {
+    background: linear-gradient(135deg, #28d8ff, #0f8bff);
+    color: #041019;
+    box-shadow: 0 10px 24px rgba(0, 132, 255, 0.8);
+}
+
+.primary-btn:active {
+    transform: translateY(1px) scale(0.99);
+    box-shadow: 0 6px 12px rgba(0, 98, 210, 0.9);
+}
+
+.secondary-btn {
+    background: rgba(10, 16, 41, 0.95);
+    color: #e2e7ff;
+    border: 1px solid rgba(86, 113, 210, 0.8);
+}
+
+.secondary-btn:active {
+    transform: translateY(1px) scale(0.99);
+}
+
+/* Modals */
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 5, 15, 0.68);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+}
+
+.modal-backdrop.modal-visible {
+    display: flex;
+}
+
+.modal {
+    width: 92%;
+    max-width: 360px;
+    border-radius: 18px;
+    background: radial-gradient(circle at top, #1a2440 0, #050818 60%);
+    border: 1px solid rgba(86, 113, 210, 0.8);
+    padding: 14px 14px 16px;
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.8);
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.modal-title {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.modal-close-btn {
+    border: none;
+    background: transparent;
+    color: #cfd8ff;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+/* Daily tasks list */
+
+.tasks-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
 }
 
 .task-item {
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    margin: 12px 0;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: rgba(9, 13, 30, 0.96);
+    border: 1px solid rgba(70, 98, 200, 0.7);
+    font-size: 13px;
 }
 
-.taskBtn {
-    padding: 6px 15px;
-    border-radius: 8px;
-    background: #007bff;
+.task-check-btn {
+    border-radius: 999px;
     border: none;
-    color: white;
+    padding: 5px 10px;
+    font-size: 11px;
     cursor: pointer;
+    background: linear-gradient(135deg, #2fd0ff, #0a7fff);
+    color: #041019;
 }
 
-#leaderList {
-    margin-top: 10px;
-    text-align: left;
+/* Leaderboard */
+
+.leaderboard-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 6px;
+    max-height: 260px;
+    overflow-y: auto;
 }
 
-#yourRank {
-    margin-top: 10px;
-    font-size: 14px;
-    opacity: 0.7;
+.leaderboard-item {
+    display: grid;
+    grid-template-columns: 32px 1fr 70px;
+    align-items: center;
+    padding: 6px 8px;
+    border-radius: 10px;
+    background: rgba(8, 12, 30, 0.98);
+    border: 1px solid rgba(72, 101, 210, 0.8);
+    font-size: 12px;
+}
+
+.leaderboard-pos {
+    opacity: 0.8;
+}
+
+.leaderboard-name {
+    padding: 0 4px;
+}
+
+.leaderboard-score {
+    text-align: right;
+    font-weight: 600;
+}
+
+/* Your rank text */
+
+.your-rank {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #b5c5ff;
+}
+
+/* Responsive */
+
+@media (max-width: 480px) {
+    .game-card {
+        padding: 14px 12px 18px;
+        border-radius: 20px;
+    }
+
+    .tap-button {
+        width: 160px;
+        height: 160px;
+        font-size: 28px;
+    }
 }
