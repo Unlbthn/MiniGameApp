@@ -126,40 +126,71 @@ def get_me(
     return user_to_dict(user)
 
 
+# main.py içinde uygun yere (diğer endpointlerin yanına) koy
+from datetime import datetime
+from fastapi import Body, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+# ... get_db ve User model importları zaten var
+
+def serialize_user(user: User):
+    """Kullanıcıyı frontend'in anlayacağı formata çevirir."""
+    return {
+        "telegram_id": user.telegram_id,
+        "level": user.level,
+        "coins": user.coins,
+        "tap_power": user.tap_power,
+        "ton_credits": float(user.ton_credits or 0),
+        "xp": user.total_coins,
+        "next_level_xp": user.next_level_xp,
+    }
+
+
+def get_or_create_user(db: Session, telegram_id: int) -> User:
+    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    if not user:
+        user = User(
+            telegram_id=telegram_id,
+            level=1,
+            coins=0,
+            tap_power=1,
+            ton_credits=0,
+            total_coins=0,
+            next_level_xp=1000,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user
+
+
 @app.post("/api/tap")
-async def api_tap(payload: dict, db: Session = Depends(get_db)):
+def tap(telegram_id: int = Body(..., embed=True), db: Session = Depends(get_db)):
     """
-    Body: { "telegram_id": int, "taps": int }
+    Her tap:
+      - coins += tap_power
+      - total_coins += tap_power
+      - level / next_level_xp güncellenir
+    ve güncel user state JSON olarak döner.
     """
-    telegram_id = payload.get("telegram_id")
-    taps = int(payload.get("taps", 1) or 1)
+    user = get_or_create_user(db, telegram_id)
 
-    if not isinstance(telegram_id, int):
-        raise HTTPException(status_code=400, detail="telegram_id required")
+    # coin & xp artışı
+    user.coins += user.tap_power
+    user.total_coins += user.tap_power
+    user.last_tap = datetime.utcnow()
 
-    user = get_or_create_user(db, telegram_id=telegram_id)
-
-    gain = taps * max(user.tap_power, 1)
-    user.coins += gain
-    user.total_coins += gain
-    user.xp += gain
-    user.last_tap_at = datetime.utcnow()
-
-    # Level-up mantığı: 1000, 2000, 3000 ...
-    leveled_up = False
-    while user.xp >= user.next_level_xp:
-        leveled_up = True
-        user.xp -= user.next_level_xp
+    # basit level up mantığı
+    # level 1 → 1000, level 2 → 2000, level 3 → 3000 gibi
+    while user.total_coins >= user.next_level_xp:
         user.level += 1
-        user.next_level_xp = user.level * 1000
+        user.next_level_xp += 1000 * user.level
 
     db.commit()
     db.refresh(user)
 
-    return {
-        "user": user_to_dict(user),
-        "leveled_up": leveled_up,
-    }
+    return serialize_user(user)
+
 
 
 @app.post("/api/upgrade/tap_power")
