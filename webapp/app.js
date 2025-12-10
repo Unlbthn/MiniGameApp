@@ -17,32 +17,36 @@ let state = {
     coins: 0,
     tapPower: 1,
     tonCredits: 0,
-    nextLevelRequirement: 1000, // backend'den gelirse override edeceğiz
+    nextLevelRequirement: 1000, // backend'den override edilecek
 };
 
-// DOM referansları
+// DOM referansları (ID'ler index.html ile bire bir uyumlu)
 const tapButton         = $("tapButton");
-const levelValue        = $("levelValue");
-const coinsValue        = $("coinsValue");
-const tapPowerValue     = $("tapPowerValue");
-const tonCreditsValue   = $("tonCreditsValue");
-const levelProgressFill = $("levelProgressFill");
+
+const levelValue        = $("level");
+const coinsValue        = $("coins");
+const tapPowerValue     = $("tapPower");
+const tonCreditsValue   = $("tonCredits");
+const levelProgressFill = $("xpFill");
 const nextLevelText     = $("nextLevelText");
 
-const increaseTapBtn    = $("increaseTapPowerBtn");
-const dailyTasksBtn     = $("dailyTasksBtn");
-const dailyTasksModal   = $("dailyTasksModal");
-const dailyTasksClose   = $("dailyTasksClose");
+const increaseTapBtn    = $("upgradeBtn");
+const dailyTasksBtn     = $("tasksBtn");
+const dailyTasksModal   = $("tasksPopup");
+const dailyTasksClose   = $("closeTasks");
 
-const walletIcon        = $("walletIcon");
-const trophyIcon        = $("trophyIcon");
-const leaderboardModal  = $("leaderboardModal");
-const leaderboardClose  = $("leaderboardClose");
-const leaderboardList   = $("leaderboardList");
-const leaderboardYouRow = $("leaderboardYouRow");
+const chestBtn          = $("chestBtn");
+const inviteBtn         = $("inviteBtn");
 
-const langEnBtn         = $("langEnBtn");
-const langTrBtn         = $("langTrBtn");
+const walletIcon        = $("walletBtn");
+const trophyIcon        = $("leaderboardBtn");
+const leaderboardModal  = $("leaderPopup");
+const leaderboardClose  = $("closeLeaderboard");
+const leaderboardList   = $("leaderList");
+const leaderboardYouRow = $("yourRank");
+
+const langEnBtn         = $("langEN");
+const langTrBtn         = $("langTR");
 
 function showError(msg) {
     console.error(msg);
@@ -69,20 +73,21 @@ function updateUI() {
     if (tonCreditsValue) tonCreditsValue.textContent = state.tonCredits.toFixed(2);
 
     // Level progress (0–1)
-    if (typeof state.nextLevelRequirement === "number" &&
+    if (
+        typeof state.nextLevelRequirement === "number" &&
         state.nextLevelRequirement > 0 &&
-        levelProgressFill) {
-
-        const currentInLevel = state.coins;
+        levelProgressFill
+    ) {
         const ratio = Math.max(
             0,
-            Math.min(1, currentInLevel / state.nextLevelRequirement)
+            Math.min(1, state.coins / state.nextLevelRequirement)
         );
         levelProgressFill.style.width = (ratio * 100).toFixed(1) + "%";
     }
 
     if (nextLevelText) {
-        nextLevelText.textContent = `Next level: ${state.coins} / ${state.nextLevelRequirement}`;
+        nextLevelText.textContent =
+            `Next level: ${state.coins} / ${state.nextLevelRequirement}`;
     }
 }
 
@@ -100,11 +105,10 @@ async function loadUser() {
         }
         const data = await res.json();
 
-        // Backend'den dönen alan isimlerine göre ayarla
-        state.level               = data.level ?? 1;
-        state.coins               = data.coins ?? 0;
-        state.tapPower            = data.tap_power ?? 1;
-        state.tonCredits          = data.ton_credits ?? 0;
+        state.level                = data.level ?? 1;
+        state.coins                = data.coins ?? 0;
+        state.tapPower             = data.tap_power ?? 1;
+        state.tonCredits           = data.ton_credits ?? 0;
         state.nextLevelRequirement = data.next_level_requirement ?? 1000;
 
         updateUI();
@@ -137,15 +141,14 @@ async function handleTap() {
 
         const data = await res.json();
 
-        state.coins               = data.coins ?? state.coins;
-        state.level               = data.level ?? state.level;
-        state.tapPower            = data.tap_power ?? state.tapPower;
-        state.tonCredits          = data.ton_credits ?? state.tonCredits;
+        state.coins                = data.coins ?? state.coins;
+        state.level                = data.level ?? state.level;
+        state.tapPower             = data.tap_power ?? state.tapPower;
+        state.tonCredits           = data.ton_credits ?? state.tonCredits;
         state.nextLevelRequirement = data.next_level_requirement ?? state.nextLevelRequirement;
 
         updateUI();
 
-        // 100 tap'te bir reklam bilgisi backend'den geliyorsa:
         if (data.show_ad) {
             console.log("Ad hint from backend:", data.show_ad);
         }
@@ -178,9 +181,9 @@ async function handleIncreaseTapPower() {
 
         const data = await res.json();
 
-        state.coins    = data.coins ?? state.coins;
-        state.tapPower = data.tap_power ?? state.tapPower;
-        state.level    = data.level ?? state.level;
+        state.coins                = data.coins ?? state.coins;
+        state.tapPower             = data.tap_power ?? state.tapPower;
+        state.level                = data.level ?? state.level;
         state.nextLevelRequirement = data.next_level_requirement ?? state.nextLevelRequirement;
 
         updateUI();
@@ -194,6 +197,7 @@ async function handleIncreaseTapPower() {
 // Daily tasks modal
 function openDailyTasks() {
     if (dailyTasksModal) {
+        dailyTasksModal.classList.remove("hidden");
         dailyTasksModal.classList.add("visible");
     }
 }
@@ -201,13 +205,43 @@ function openDailyTasks() {
 function closeDailyTasks() {
     if (dailyTasksModal) {
         dailyTasksModal.classList.remove("visible");
+        dailyTasksModal.classList.add("hidden");
     }
 }
+
+// Daily TON Chest (şimdilik placeholder – sonra backend'e bağlarız)
+async function handleChestTask() {
+    // Buraya /api/tasks/chest çağrısı ekleyebiliriz
+    showToast("Daily TON Chest will be upgraded soon with real rewards.");
+}
+
+// Invite Friends (Telegram share link)
+function handleInviteTask() {
+    const url = "https://t.me/TaptoEarnTonBot/app"; // senin gerçek TMA linkini yaz
+    const text = "Tap to Earn TON oyununa katıl, birlikte TON kazanalım!";
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
+
+    if (tg && tg.openTelegramLink) {
+        tg.openTelegramLink(shareUrl);
+    } else {
+        window.open(shareUrl, "_blank");
+    }
+}
+
+// Partner site linki – index.html'deki inline onclick bunu kullanıyor
+function openTaskLink(url) {
+    if (tg && tg.openLink) {
+        tg.openLink(url);
+    } else {
+        window.open(url, "_blank");
+    }
+}
+window.openTaskLink = openTaskLink; // global yap
 
 // Wallet icon
 function handleWalletClick() {
     showToast("TON wallet linking will be available soon.");
-    // İleride TonConnect entegrasyonunu buraya koyacağız.
+    // TonConnect entegrasyonunu buraya ekleyeceğiz.
 }
 
 // Leaderboard
@@ -255,6 +289,7 @@ async function openLeaderboard() {
             leaderboardYouRow.textContent = "Play more to enter the rankings!";
         }
 
+        leaderboardModal.classList.remove("hidden");
         leaderboardModal.classList.add("visible");
     } catch (err) {
         console.error(err);
@@ -265,10 +300,11 @@ async function openLeaderboard() {
 function closeLeaderboard() {
     if (leaderboardModal) {
         leaderboardModal.classList.remove("visible");
+        leaderboardModal.classList.add("hidden");
     }
 }
 
-// Dil değiştirme (şimdilik sadece buton seçimi)
+// Dil değiştirme (şimdilik buton highlight)
 function setLanguage(lang) {
     if (lang === "en") {
         if (langEnBtn) langEnBtn.classList.add("active");
@@ -277,7 +313,6 @@ function setLanguage(lang) {
         if (langTrBtn) langTrBtn.classList.add("active");
         if (langEnBtn) langEnBtn.classList.remove("active");
     }
-    // İleride backend'e language preference gönderebiliriz.
 }
 
 // Başlat
@@ -291,34 +326,19 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Event listeners — element varsa bağla
-    if (tapButton) {
-        tapButton.addEventListener("click", handleTap);
-    }
-    if (increaseTapBtn) {
-        increaseTapBtn.addEventListener("click", handleIncreaseTapPower);
-    }
-    if (dailyTasksBtn) {
-        dailyTasksBtn.addEventListener("click", openDailyTasks);
-    }
-    if (dailyTasksClose) {
-        dailyTasksClose.addEventListener("click", closeDailyTasks);
-    }
-    if (walletIcon) {
-        walletIcon.addEventListener("click", handleWalletClick);
-    }
-    if (trophyIcon) {
-        trophyIcon.addEventListener("click", openLeaderboard);
-    }
-    if (leaderboardClose) {
-        leaderboardClose.addEventListener("click", closeLeaderboard);
-    }
+    if (tapButton)       tapButton.addEventListener("click", handleTap);
+    if (increaseTapBtn)  increaseTapBtn.addEventListener("click", handleIncreaseTapPower);
+    if (dailyTasksBtn)   dailyTasksBtn.addEventListener("click", openDailyTasks);
+    if (dailyTasksClose) dailyTasksClose.addEventListener("click", closeDailyTasks);
+    if (chestBtn)        chestBtn.addEventListener("click", handleChestTask);
+    if (inviteBtn)       inviteBtn.addEventListener("click", handleInviteTask);
 
-    if (langEnBtn) {
-        langEnBtn.addEventListener("click", () => setLanguage("en"));
-    }
-    if (langTrBtn) {
-        langTrBtn.addEventListener("click", () => setLanguage("tr"));
-    }
+    if (walletIcon)      walletIcon.addEventListener("click", handleWalletClick);
+    if (trophyIcon)      trophyIcon.addEventListener("click", openLeaderboard);
+    if (leaderboardClose) leaderboardClose.addEventListener("click", closeLeaderboard);
+
+    if (langEnBtn) langEnBtn.addEventListener("click", () => setLanguage("en"));
+    if (langTrBtn) langTrBtn.addEventListener("click", () => setLanguage("tr"));
 
     // Başlangıç dili
     setLanguage("en");

@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>Tap to Earn TON</title>
 
     <link rel="stylesheet" href="/static/styles.css" />
@@ -22,17 +23,39 @@
     </div>
 
     <div id="statsBox">
-        <div class="stat-line"><span id="levelLabel">Level</span>: <span id="level">1</span></div>
-        <div class="xp-bar"><div id="xpFill"></div></div>
-        <div class="stat-line"><span id="coinsLabel">Coins</span>: <span id="coins">0</span></div>
-        <div class="stat-line"><span id="tapPowerLabel">Tap Power</span>: <span id="tapPower">1</span></div>
-        <div class="stat-line"><span id="tonLabel">TON Credits</span>: <span id="tonCredits">0.00</span></div>
+        <div class="stat-line">
+            <span id="levelLabel">Level</span>:
+            <span id="level">1</span>
+        </div>
+
+        <div class="xp-bar">
+            <div id="xpFill"></div>
+        </div>
+        <!-- SEVİYE İLERLEME METNİ İÇİN -->
+        <div class="stat-line">
+            <span id="nextLevelText">Next level: 0 / 1000</span>
+        </div>
+
+        <div class="stat-line">
+            <span id="coinsLabel">Coins</span>:
+            <span id="coins">0</span>
+        </div>
+        <div class="stat-line">
+            <span id="tapPowerLabel">Tap Power</span>:
+            <span id="tapPower">1</span>
+        </div>
+        <div class="stat-line">
+            <span id="tonLabel">TON Credits</span>:
+            <span id="tonCredits">0.00</span>
+        </div>
     </div>
 
     <button id="tapButton">TAP</button>
 
     <div id="belowTapText">
-        <span id="every100">Every 100 taps shows an ad and boosts your earnings.</span>
+        <span id="every100">
+            Every 100 taps shows an ad and boosts your earnings.
+        </span>
     </div>
 
     <div id="upgradeBox">
