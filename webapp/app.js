@@ -1,348 +1,366 @@
 // webapp/app.js
 
-// Küçük yardımcı: element al, yoksa uyar ama hata fırlatma
-function $(id) {
-    const el = document.getElementById(id);
-    if (!el) {
-        console.warn("Missing element with id:", id);
-    }
-    return el;
-}
-
-const tg = window.Telegram ? window.Telegram.WebApp : null;
-
-let telegramId = null;
-let state = {
-    level: 1,
-    coins: 0,
-    tapPower: 1,
-    tonCredits: 0,
-    nextLevelRequirement: 1000, // backend'den override edilecek
+// ----- Global state -----
+const state = {
+    user: null,
+    lang: "en",
+    tapInFlight: false,
+    telegramId: null,
 };
 
-// DOM referansları (ID'ler index.html ile bire bir uyumlu)
-const tapButton         = $("tapButton");
-
-const levelValue        = $("level");
-const coinsValue        = $("coins");
-const tapPowerValue     = $("tapPower");
-const tonCreditsValue   = $("tonCredits");
-const levelProgressFill = $("xpFill");
-const nextLevelText     = $("nextLevelText");
-
-const increaseTapBtn    = $("upgradeBtn");
-const dailyTasksBtn     = $("tasksBtn");
-const dailyTasksModal   = $("tasksPopup");
-const dailyTasksClose   = $("closeTasks");
-
-const chestBtn          = $("chestBtn");
-const inviteBtn         = $("inviteBtn");
-
-const walletIcon        = $("walletBtn");
-const trophyIcon        = $("leaderboardBtn");
-const leaderboardModal  = $("leaderPopup");
-const leaderboardClose  = $("closeLeaderboard");
-const leaderboardList   = $("leaderList");
-const leaderboardYouRow = $("yourRank");
-
-const langEnBtn         = $("langEN");
-const langTrBtn         = $("langTR");
-
-function showError(msg) {
-    console.error(msg);
-    if (tg && typeof tg.showAlert === "function") {
-        tg.showAlert(msg);
-    } else {
-        alert(msg);
-    }
-}
-
-function showToast(msg) {
-    if (tg && typeof tg.showPopup === "function") {
-        tg.showPopup({ message: msg });
-    } else {
-        console.log("Toast:", msg);
-    }
-}
-
-// UI güncelleme
-function updateUI() {
-    if (levelValue)      levelValue.textContent      = state.level;
-    if (coinsValue)      coinsValue.textContent      = state.coins;
-    if (tapPowerValue)   tapPowerValue.textContent   = state.tapPower;
-    if (tonCreditsValue) tonCreditsValue.textContent = state.tonCredits.toFixed(2);
-
-    // Level progress (0–1)
-    if (
-        typeof state.nextLevelRequirement === "number" &&
-        state.nextLevelRequirement > 0 &&
-        levelProgressFill
-    ) {
-        const ratio = Math.max(
-            0,
-            Math.min(1, state.coins / state.nextLevelRequirement)
-        );
-        levelProgressFill.style.width = (ratio * 100).toFixed(1) + "%";
-    }
-
-    if (nextLevelText) {
-        nextLevelText.textContent =
-            `Next level: ${state.coins} / ${state.nextLevelRequirement}`;
-    }
-}
-
-// Kullanıcıyı backend'den çek
-async function loadUser() {
-    if (!telegramId) {
-        showError("Telegram user id not found. Please open this game inside Telegram.");
-        return;
-    }
-
+// ----- Helpers -----
+function getTelegramId() {
     try {
-        const res = await fetch(`/api/me?telegram_id=${telegramId}`);
-        if (!res.ok) {
-            throw new Error("Failed to load user: " + res.status);
+        const tg = window.Telegram?.WebApp;
+        if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            return tg.initDataUnsafe.user.id;
         }
-        const data = await res.json();
-
-        state.level                = data.level ?? 1;
-        state.coins                = data.coins ?? 0;
-        state.tapPower             = data.tap_power ?? 1;
-        state.tonCredits           = data.ton_credits ?? 0;
-        state.nextLevelRequirement = data.next_level_requirement ?? 1000;
-
-        updateUI();
-    } catch (err) {
-        console.error(err);
-        showError("Could not load player data. Please try again.");
+    } catch (e) {
+        console.error("Telegram WebApp error:", e);
     }
+    return null;
 }
 
-// TAP handler
-async function handleTap() {
-    if (!telegramId) {
-        showError("Telegram user not detected.");
-        return;
-    }
-
+function tgAlert(message) {
     try {
-        const res = await fetch("/api/tap", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ telegram_id: telegramId })
-        });
-
-        if (!res.ok) {
-            const txt = await res.text();
-            console.error("Tap failed:", res.status, txt);
-            showError("Tap failed, please try again.");
+        const tg = window.Telegram?.WebApp;
+        if (tg && tg.showAlert) {
+            tg.showAlert(message);
             return;
         }
+    } catch (e) {
+        console.error("Telegram alert error:", e);
+    }
+    alert(message);
+}
 
-        const data = await res.json();
-
-        state.coins                = data.coins ?? state.coins;
-        state.level                = data.level ?? state.level;
-        state.tapPower             = data.tap_power ?? state.tapPower;
-        state.tonCredits           = data.ton_credits ?? state.tonCredits;
-        state.nextLevelRequirement = data.next_level_requirement ?? state.nextLevelRequirement;
-
-        updateUI();
-
-        if (data.show_ad) {
-            console.log("Ad hint from backend:", data.show_ad);
-        }
-    } catch (err) {
-        console.error(err);
-        showError("Tap error, please try again.");
+function bindClick(id, handler) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.addEventListener("click", handler);
     }
 }
 
-// Tap power upgrade handler
-async function handleIncreaseTapPower() {
-    if (!telegramId) {
-        showError("Telegram user not detected.");
+function formatTon(ton) {
+    if (ton == null) return "0.00";
+    return Number(ton).toFixed(2);
+}
+
+// ----- API calls -----
+async function apiGetMe() {
+    if (!state.telegramId) return null;
+    const resp = await fetch(`/api/me?telegram_id=${state.telegramId}`);
+    if (!resp.ok) {
+        throw new Error("Failed to load user");
+    }
+    const data = await resp.json();
+    // /api/me bazen direkt user, bazen {user: {...}} dönebilir
+    return data.user || data;
+}
+
+async function apiTap() {
+    if (!state.telegramId) throw new Error("No telegram id");
+    const resp = await fetch("/api/tap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telegram_id: state.telegramId }),
+    });
+    if (!resp.ok) {
+        throw new Error("Tap failed");
+    }
+    // Cevabı kullanmak zorunda değiliz, garanti için tekrar /api/me çağıracağız
+}
+
+async function apiUpgradeTapPower() {
+    if (!state.telegramId) throw new Error("No telegram id");
+    const resp = await fetch("/api/upgrade_tap_power", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telegram_id: state.telegramId }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) {
+        throw new Error(data.error || "Upgrade failed");
+    }
+    return data.user || data;
+}
+
+async function apiGetTasks() {
+    if (!state.telegramId) return [];
+    const resp = await fetch(`/api/daily_tasks?telegram_id=${state.telegramId}`);
+    if (!resp.ok) {
+        throw new Error("Failed to load tasks");
+    }
+    const data = await resp.json();
+    return data.tasks || data;
+}
+
+async function apiClaimTask(taskKey) {
+    if (!state.telegramId) throw new Error("No telegram id");
+    const resp = await fetch("/api/claim_task", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telegram_id: state.telegramId, task_key: taskKey }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) {
+        throw new Error(data.error || "Claim failed");
+    }
+    return {
+        user: data.user || data,
+        tasks: data.tasks || [],
+    };
+}
+
+async function apiGetLeaderboard() {
+    const resp = await fetch("/api/leaderboard");
+    if (!resp.ok) throw new Error("Leaderboard failed");
+    const data = await resp.json();
+    return {
+        top: data.top || [],
+        you: data.you || null,
+    };
+}
+
+// ----- UI update -----
+function updateUserUI() {
+    const u = state.user;
+    if (!u) return;
+
+    const levelEl = document.getElementById("levelValue");
+    const coinsEl = document.getElementById("coinsValue");
+    const tapPowerEl = document.getElementById("tapPowerValue");
+    const tonCreditsEl = document.getElementById("tonCreditsValue");
+    const nextLabelEl = document.getElementById("nextLevelLabel");
+    const progressFill = document.getElementById("progressBarFill");
+
+    if (levelEl) levelEl.textContent = u.level ?? 1;
+    if (coinsEl) coinsEl.textContent = u.coins ?? 0;
+    if (tapPowerEl) tapPowerEl.textContent = u.tap_power ?? 1;
+    if (tonCreditsEl) tonCreditsEl.textContent = formatTon(u.ton_credits);
+
+    const currentXp = u.current_xp ?? 0;
+    const nextXp = u.next_level_xp ?? 1000;
+    if (nextLabelEl) {
+        nextLabelEl.textContent = `${currentXp} / ${nextXp}`;
+    }
+    const pct = Math.max(0, Math.min(100, (currentXp / nextXp) * 100));
+    if (progressFill) {
+        progressFill.style.width = `${pct}%`;
+    }
+}
+
+function renderTasks(tasks) {
+    const container = document.getElementById("tasksList");
+    if (!container) return;
+    if (!tasks || tasks.length === 0) {
+        container.innerHTML =
+            '<div class="task-item empty">No tasks available for now.</div>';
         return;
     }
 
-    try {
-        const res = await fetch("/api/upgrade_tap_power", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ telegram_id: telegramId })
-        });
+    container.innerHTML = "";
+    tasks.forEach((t) => {
+        const row = document.createElement("div");
+        row.className = "task-item";
 
-        if (!res.ok) {
-            const txt = await res.text();
-            console.error("Upgrade failed:", res.status, txt);
-            showError("Not enough coins to upgrade tap power.");
-            return;
-        }
+        const info = document.createElement("div");
+        info.className = "task-info";
+        info.innerHTML = `
+            <div class="task-title">${t.title || t.key}</div>
+            <div class="task-desc">${t.description || ""}</div>
+            <div class="task-reward">+${t.reward_coins || 0} coins${
+            t.reward_ton ? ` • +${formatTon(t.reward_ton)} TON` : ""
+        }</div>
+        `;
 
-        const data = await res.json();
+        const actions = document.createElement("div");
+        actions.className = "task-actions";
 
-        state.coins                = data.coins ?? state.coins;
-        state.tapPower             = data.tap_power ?? state.tapPower;
-        state.level                = data.level ?? state.level;
-        state.nextLevelRequirement = data.next_level_requirement ?? state.nextLevelRequirement;
-
-        updateUI();
-        showToast("Tap power upgraded!");
-    } catch (err) {
-        console.error(err);
-        showError("Upgrade error, please try again.");
-    }
-}
-
-// Daily tasks modal
-function openDailyTasks() {
-    if (dailyTasksModal) {
-        dailyTasksModal.classList.remove("hidden");
-        dailyTasksModal.classList.add("visible");
-    }
-}
-
-function closeDailyTasks() {
-    if (dailyTasksModal) {
-        dailyTasksModal.classList.remove("visible");
-        dailyTasksModal.classList.add("hidden");
-    }
-}
-
-// Daily TON Chest (şimdilik placeholder – sonra backend'e bağlarız)
-async function handleChestTask() {
-    // Buraya /api/tasks/chest çağrısı ekleyebiliriz
-    showToast("Daily TON Chest will be upgraded soon with real rewards.");
-}
-
-// Invite Friends (Telegram share link)
-function handleInviteTask() {
-    const url = "https://t.me/TaptoEarnTonBot/app"; // senin gerçek TMA linkini yaz
-    const text = "Tap to Earn TON oyununa katıl, birlikte TON kazanalım!";
-    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
-
-    if (tg && tg.openTelegramLink) {
-        tg.openTelegramLink(shareUrl);
-    } else {
-        window.open(shareUrl, "_blank");
-    }
-}
-
-// Partner site linki – index.html'deki inline onclick bunu kullanıyor
-function openTaskLink(url) {
-    if (tg && tg.openLink) {
-        tg.openLink(url);
-    } else {
-        window.open(url, "_blank");
-    }
-}
-window.openTaskLink = openTaskLink; // global yap
-
-// Wallet icon
-function handleWalletClick() {
-    showToast("TON wallet linking will be available soon.");
-    // TonConnect entegrasyonunu buraya ekleyeceğiz.
-}
-
-// Leaderboard
-async function openLeaderboard() {
-    if (!telegramId) {
-        showError("Telegram user not detected.");
-        return;
-    }
-
-    if (!leaderboardModal || !leaderboardList || !leaderboardYouRow) {
-        console.warn("Leaderboard elements missing, skipping openLeaderboard");
-        return;
-    }
-
-    try {
-        const res = await fetch(`/api/leaderboard?telegram_id=${telegramId}`);
-        if (!res.ok) {
-            const txt = await res.text();
-            console.error("Leaderboard failed:", res.status, txt);
-            showError("Could not load leaderboard.");
-            return;
-        }
-
-        const data = await res.json();
-        const top = data.top ?? [];
-        const you = data.you ?? null;
-
-        leaderboardList.innerHTML = "";
-
-        top.forEach((user, idx) => {
-            const row = document.createElement("div");
-            row.className = "leaderboard-row";
-            row.innerHTML = `
-                <span class="leaderboard-rank">#${idx + 1}</span>
-                <span class="leaderboard-name">${user.username || "Player"}</span>
-                <span class="leaderboard-score">${user.total_coins ?? 0}💠</span>
-            `;
-            leaderboardList.appendChild(row);
-        });
-
-        if (you) {
-            leaderboardYouRow.textContent =
-                `Your rank: #${you.rank} • Total coins: ${you.total_coins ?? 0}`;
+        const status = t.status || "pending";
+        if (status === "completed") {
+            const done = document.createElement("span");
+            done.className = "task-status done";
+            done.textContent = "Done";
+            actions.appendChild(done);
+        } else if (status === "claimed") {
+            const claimed = document.createElement("span");
+            claimed.className = "task-status claimed";
+            claimed.textContent = "Claimed";
+            actions.appendChild(claimed);
         } else {
-            leaderboardYouRow.textContent = "Play more to enter the rankings!";
+            const goBtn = document.createElement("button");
+            goBtn.className = "btn-task-go";
+            goBtn.textContent = "Go";
+            goBtn.addEventListener("click", () => {
+                if (t.url) {
+                    window.open(t.url, "_blank");
+                } else {
+                    tgAlert("Task link is not ready yet.");
+                }
+            });
+
+            const claimBtn = document.createElement("button");
+            claimBtn.className = "btn-task-claim";
+            claimBtn.textContent = "Claim";
+            claimBtn.addEventListener("click", async () => {
+                try {
+                    const { user, tasks: newTasks } = await apiClaimTask(t.key);
+                    state.user = user;
+                    updateUserUI();
+                    renderTasks(newTasks);
+                    tgAlert("Reward claimed!");
+                } catch (e) {
+                    console.error(e);
+                    tgAlert(e.message || "Claim failed");
+                }
+            });
+
+            actions.appendChild(goBtn);
+            actions.appendChild(claimBtn);
         }
 
-        leaderboardModal.classList.remove("hidden");
-        leaderboardModal.classList.add("visible");
-    } catch (err) {
-        console.error(err);
-        showError("Leaderboard error, please try again.");
+        row.appendChild(info);
+        row.appendChild(actions);
+        container.appendChild(row);
+    });
+}
+
+function renderLeaderboard(top, you) {
+    const modal = document.getElementById("leaderboardModal");
+    const list = document.getElementById("leaderboardList");
+    const youRow = document.getElementById("leaderboardYou");
+    if (!modal || !list) return;
+
+    list.innerHTML = "";
+    top.forEach((u, idx) => {
+        const row = document.createElement("div");
+        row.className = "leaderboard-row";
+        row.innerHTML = `
+            <span class="lb-rank">${u.rank ?? idx + 1}</span>
+            <span class="lb-name">${u.username || u.first_name || u.telegram_id}</span>
+            <span class="lb-score">${u.total_coins ?? 0}</span>
+        `;
+        list.appendChild(row);
+    });
+
+    if (you && youRow) {
+        youRow.innerHTML = `
+            <span class="lb-rank">${you.rank}</span>
+            <span class="lb-name">${you.username || you.first_name || you.telegram_id}</span>
+            <span class="lb-score">${you.total_coins ?? 0}</span>
+        `;
+        youRow.style.display = "flex";
+    }
+
+    modal.classList.add("open");
+}
+
+// ----- Event handlers -----
+async function handleTapClick() {
+    if (!state.telegramId) {
+        tgAlert("Telegram ID not found.");
+        return;
+    }
+    if (state.tapInFlight) return;
+    state.tapInFlight = true;
+    try {
+        await apiTap();          // coin ekleyen endpoint
+        const user = await apiGetMe(); // en güncel değeri çek
+        state.user = user;
+        updateUserUI();
+    } catch (e) {
+        console.error(e);
+        tgAlert("Tap failed, please try again.");
+    } finally {
+        state.tapInFlight = false;
     }
 }
 
-function closeLeaderboard() {
-    if (leaderboardModal) {
-        leaderboardModal.classList.remove("visible");
-        leaderboardModal.classList.add("hidden");
+async function handleUpgradeClick() {
+    try {
+        const user = await apiUpgradeTapPower();
+        state.user = user;
+        updateUserUI();
+        tgAlert("Tap power upgraded!");
+    } catch (e) {
+        console.error(e);
+        tgAlert(e.message || "Not enough coins to upgrade tap power.");
     }
 }
 
-// Dil değiştirme (şimdilik buton highlight)
-function setLanguage(lang) {
-    if (lang === "en") {
-        if (langEnBtn) langEnBtn.classList.add("active");
-        if (langTrBtn) langTrBtn.classList.remove("active");
-    } else {
-        if (langTrBtn) langTrBtn.classList.add("active");
-        if (langEnBtn) langEnBtn.classList.remove("active");
+async function handleOpenTasks() {
+    const modal = document.getElementById("tasksModal");
+    if (!modal) return;
+    try {
+        const tasks = await apiGetTasks();
+        renderTasks(tasks);
+        modal.classList.add("open");
+    } catch (e) {
+        console.error(e);
+        tgAlert("Failed to load daily tasks.");
     }
 }
 
-// Başlat
-document.addEventListener("DOMContentLoaded", () => {
-    // Telegram kullanıcıyı al
-    if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
-        telegramId = tg.initDataUnsafe.user.id;
-        console.log("Telegram user id:", telegramId);
-    } else {
-        console.warn("Telegram WebApp user not found in initDataUnsafe.");
+function handleCloseTasks() {
+    const modal = document.getElementById("tasksModal");
+    if (modal) modal.classList.remove("open");
+}
+
+async function handleOpenLeaderboard() {
+    try {
+        const { top, you } = await apiGetLeaderboard();
+        renderLeaderboard(top, you);
+    } catch (e) {
+        console.error(e);
+        tgAlert("Failed to load leaderboard.");
+    }
+}
+
+function handleCloseLeaderboard() {
+    const modal = document.getElementById("leaderboardModal");
+    if (modal) modal.classList.remove("open");
+}
+
+function handleWalletClick() {
+    tgAlert("TON wallet linking will be available soon.");
+}
+
+// ----- Init -----
+async function initApp() {
+    state.telegramId = getTelegramId();
+
+    // Telegram tema ile uyum için
+    try {
+        const tg = window.Telegram?.WebApp;
+        if (tg && tg.ready) {
+            tg.ready();
+            tg.expand();
+        }
+    } catch (e) {
+        console.error(e);
     }
 
-    // Event listeners — element varsa bağla
-    if (tapButton)       tapButton.addEventListener("click", handleTap);
-    if (increaseTapBtn)  increaseTapBtn.addEventListener("click", handleIncreaseTapPower);
-    if (dailyTasksBtn)   dailyTasksBtn.addEventListener("click", openDailyTasks);
-    if (dailyTasksClose) dailyTasksClose.addEventListener("click", closeDailyTasks);
-    if (chestBtn)        chestBtn.addEventListener("click", handleChestTask);
-    if (inviteBtn)       inviteBtn.addEventListener("click", handleInviteTask);
+    // Event listener'lar
+    bindClick("tapButton", handleTapClick);
+    bindClick("upgradeButton", handleUpgradeClick);
+    bindClick("dailyTasksButton", handleOpenTasks);
+    bindClick("tasksClose", handleCloseTasks);
+    bindClick("walletButton", handleWalletClick);
+    bindClick("leaderboardButton", handleOpenLeaderboard);
+    bindClick("leaderboardClose", handleCloseLeaderboard);
 
-    if (walletIcon)      walletIcon.addEventListener("click", handleWalletClick);
-    if (trophyIcon)      trophyIcon.addEventListener("click", openLeaderboard);
-    if (leaderboardClose) leaderboardClose.addEventListener("click", closeLeaderboard);
+    // Başlangıçta kullanıcıyı çek
+    try {
+        const user = await apiGetMe();
+        if (user) {
+            state.user = user;
+            updateUserUI();
+        }
+    } catch (e) {
+        console.error(e);
+        tgAlert("Failed to load user data.");
+    }
+}
 
-    if (langEnBtn) langEnBtn.addEventListener("click", () => setLanguage("en"));
-    if (langTrBtn) langTrBtn.addEventListener("click", () => setLanguage("tr"));
-
-    // Başlangıç dili
-    setLanguage("en");
-
-    // Kullanıcı verisini çek
-    loadUser();
-});
+document.addEventListener("DOMContentLoaded", initApp);
