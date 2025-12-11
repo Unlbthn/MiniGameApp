@@ -1,10 +1,8 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 import os
-from datetime import datetime
 
 from .db import SessionLocal, engine, Base
 from .models import User
@@ -13,12 +11,12 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# Static files
+# Static directory
 static_dir = os.path.join(os.path.dirname(__file__), "..", "webapp")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
-# ---------------------- DATABASE DEPENDENCY ----------------------
+# ---------------------- DB SESSION ----------------------
 def get_db():
     db = SessionLocal()
     try:
@@ -27,14 +25,15 @@ def get_db():
         db.close()
 
 
-# ---------------------- USER CREATION ----------------------
+# ---------------------- USER CREATOR ----------------------
 def get_or_create_user(db: Session, telegram_id: int, name: str = None):
+
     user = db.query(User).filter(User.telegram_id == telegram_id).first()
 
     if not user:
         user = User(
             telegram_id=telegram_id,
-            name=name or "Player",
+            name=name if name else "Player",
             level=1,
             coins=0,
             tap_power=1,
@@ -49,16 +48,20 @@ def get_or_create_user(db: Session, telegram_id: int, name: str = None):
 
 
 # ---------------------- ROUTES ----------------------
-
 @app.get("/")
-def main_page():
+def serve_index():
     index_path = os.path.join(static_dir, "index.html")
     return FileResponse(index_path)
 
 
 @app.get("/api/me")
-def get_me(telegram_id: int, name: str = "", db: Session = Depends(get_db)):
+def get_me(telegram_id: int, name: str = None, db: Session = Depends(get_db)):
+    """
+    name parametresi gönderilmese bile hata vermez.
+    Telegram Mini-App uyumlu hale getirildi.
+    """
     user = get_or_create_user(db, telegram_id=telegram_id, name=name)
+
     return {
         "telegram_id": user.telegram_id,
         "name": user.name,
@@ -73,6 +76,7 @@ def get_me(telegram_id: int, name: str = "", db: Session = Depends(get_db)):
 @app.post("/api/tap")
 def tap(telegram_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.telegram_id == telegram_id).first()
+
     if not user:
         raise HTTPException(404, "User not found")
 
@@ -88,15 +92,18 @@ def tap(telegram_id: int, db: Session = Depends(get_db)):
 @app.post("/api/upgrade_tap_power")
 def upgrade_tap_power(telegram_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.telegram_id == telegram_id).first()
+
     if not user:
         raise HTTPException(404, "User not found")
 
     cost = 100
+
     if user.coins < cost:
         raise HTTPException(400, "Not enough coins")
 
     user.coins -= cost
     user.tap_power += 1
+
     db.commit()
     db.refresh(user)
 
