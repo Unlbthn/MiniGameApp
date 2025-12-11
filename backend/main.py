@@ -26,29 +26,35 @@ def get_db():
 
 
 # ---------------------- USER CREATOR ----------------------
-def get_or_create_user(db: Session, telegram_id: str, name: str | None = None):
+def get_or_create_user(db: Session, telegram_id: int, name: str = None):
     """
-    Kullanıcıyı telegram_id ile bulur, yoksa oluşturur.
-    `name` şu an DB modelinde olmadığından sadece parametre olarak alıyoruz ama kaydetmiyoruz.
-    Böylece hem frontend tarafında name göndermeye devam edebilirsin
-    hem de SQLAlchemy 'invalid keyword argument' hatası vermez.
+    Kullanıcı yoksa oluşturur, varsa döndürür.
+    name parametresi opsiyoneldir.
     """
+
     user = db.query(User).filter(User.telegram_id == telegram_id).first()
-    if user:
-        return user
 
-    # Sadece modelde olduğundan emin olduğumuz alanları set ediyoruz
-    user = User(
-        telegram_id=telegram_id,
-        level=1,
-        coins=0,
-        tap_power=1,
-        ton_credits=0,
-    )
+    if not user:
+        user = User(
+            telegram_id=telegram_id,
+            name=name if name else "Player",
+            level=1,
+            coins=0,
+            tap_power=1,
+            ton_credits=0,
+            xp=0
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
 
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    else:
+        # Eğer name gönderilmişse güncelle
+        if name and user.name != name:
+            user.name = name
+            db.commit()
+            db.refresh(user)
+
     return user
 
 
@@ -61,18 +67,13 @@ def serve_index():
 
 
 @app.get("/api/me")
-def get_me(telegram_id: str, name: str = None, db: Session = Depends(get_db)):
-    """
-    Kullanıcıyı telegram_id ile getirir, yoksa oluşturur.
-    name parametresi şu an DB'de tutulmuyor, sadece ileride kullanmak istersen için
-    fonksiyon imzasında bırakıldı.
-    """
-    # telegram_id'yi string olarak kullanıyoruz (DB'de genelde String kolon oluyor)
+def get_me(telegram_id: int, name: str = None, db: Session = Depends(get_db)):
+
     user = get_or_create_user(db, telegram_id=telegram_id, name=name)
 
     return {
         "telegram_id": user.telegram_id,
-        # "name": user.name,  # <- DB modelinde name kolonu olmadığı için şimdilik göndermiyoruz
+        "name": user.name,
         "level": user.level,
         "coins": user.coins,
         "tap_power": user.tap_power,
