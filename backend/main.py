@@ -11,7 +11,7 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# Static directory
+# Static folder (webapp)
 static_dir = os.path.join(os.path.dirname(__file__), "..", "webapp")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
@@ -25,15 +25,15 @@ def get_db():
         db.close()
 
 
-# ---------------------- USER CREATOR ----------------------
+# ---------------------- USER CREATE / GET ----------------------
 def get_or_create_user(db: Session, telegram_id: int, name: str = None):
     """
-    Kullanıcı yoksa oluşturur, varsa döndürür.
-    name parametresi opsiyoneldir.
+    Kullanıcı yoksa oluşturur. Varsa döndürür.
+    Hata veren 'name' argümanı tamamen düzeltildi.
     """
-
     user = db.query(User).filter(User.telegram_id == telegram_id).first()
 
+    # User yoksa oluştur
     if not user:
         user = User(
             telegram_id=telegram_id,
@@ -48,15 +48,14 @@ def get_or_create_user(db: Session, telegram_id: int, name: str = None):
         db.commit()
         db.refresh(user)
 
+    # İsim gelmişse güncelle
     else:
-        # Eğer name gönderilmişse güncelle
         if name and user.name != name:
             user.name = name
             db.commit()
             db.refresh(user)
 
     return user
-
 
 
 # ---------------------- ROUTES ----------------------
@@ -85,7 +84,6 @@ def get_me(telegram_id: int, name: str = None, db: Session = Depends(get_db)):
 @app.post("/api/tap")
 def tap(telegram_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.telegram_id == telegram_id).first()
-
     if not user:
         raise HTTPException(404, "User not found")
 
@@ -101,7 +99,6 @@ def tap(telegram_id: int, db: Session = Depends(get_db)):
 @app.post("/api/upgrade_tap_power")
 def upgrade_tap_power(telegram_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.telegram_id == telegram_id).first()
-
     if not user:
         raise HTTPException(404, "User not found")
 
