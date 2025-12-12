@@ -1,101 +1,107 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>Tap to Earn TON</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Tap to Earn TON</title>
 
-    <link rel="stylesheet" href="/static/styles.css" />
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://unpkg.com/@tonconnect/ui@2.0.0/dist/tonconnect-ui.min.js"></script>
-    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://unpkg.com/@tonconnect/ui@2.0.0/dist/tonconnect-ui.min.js"></script>
+  <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 </head>
 
 <body>
-    <div id="header">
-        <img id="walletBtn" src="/static/icons/wallet.png" class="icon-btn">
-        <img id="leaderboardBtn" src="/static/icons/trophy.png" class="icon-btn">
-        <span id="languageButtons">
-            <button id="langEN">EN</button>
-            <button id="langTR">TR</button>
-        </span>
-    </div>
+  <div class="app-root">
+    <div class="game-card">
+      <div class="game-card-inner">
 
-    <div id="statsBox">
-        <div class="stat-line">
-            <span id="levelLabel">Level</span>:
-            <span id="level">1</span>
-        </div>
-
-        <div class="xp-bar">
-            <div id="xpFill"></div>
-        </div>
-        <!-- SEVİYE İLERLEME METNİ İÇİN -->
-        <div class="stat-line">
-            <span id="nextLevelText">Next level: 0 / 1000</span>
-        </div>
-
-        <div class="stat-line">
-            <span id="coinsLabel">Coins</span>:
-            <span id="coins">0</span>
-        </div>
-        <div class="stat-line">
-            <span id="tapPowerLabel">Tap Power</span>:
-            <span id="tapPower">1</span>
-        </div>
-        <div class="stat-line">
-            <span id="tonLabel">TON Credits</span>:
-            <span id="tonCredits">0.00</span>
-        </div>
-    </div>
-
-    <button id="tapButton">TAP</button>
-
-    <div id="belowTapText">
-        <span id="every100">
-            Every 100 taps shows an ad and boosts your earnings.
-        </span>
-    </div>
-
-    <div id="upgradeBox">
-        <button id="upgradeBtn">Increase Tap Power (cost: 100 coins)</button>
-        <button id="tasksBtn">Daily Tasks</button>
-    </div>
-
-    <!-- Daily Tasks Popup -->
-    <div id="tasksPopup" class="popup hidden">
-        <div class="popupInner">
-            <button class="closeBtn" id="closeTasks">×</button>
-            <h2>Daily Tasks</h2>
-
-            <div class="task-item">
-                <span>Daily TON Chest</span>
-                <button class="taskBtn" id="chestBtn">Open</button>
+        <div class="top-bar">
+          <div class="level-row">
+            <div class="level-row-main">
+              <div class="level-label">Level</div>
+              <div class="level-value"><span id="levelValue">1</span></div>
             </div>
 
-            <div class="task-item">
-                <span>Invite Friends</span>
-                <button class="taskBtn" id="inviteBtn">GO</button>
+            <div class="xp-progress">
+              <div id="xpProgressInner" class="xp-progress-inner"></div>
             </div>
+            <div id="nextLevelLabel" class="next-level-label">0 / 1000</div>
+          </div>
 
-            <div class="task-item">
-                <span>Visit Partner Site</span>
-                <button class="taskBtn" onclick="openTaskLink('https://google.com')">GO</button>
-            </div>
+          <div class="top-actions">
+            <button id="walletButton" class="icon-btn" aria-label="Wallet">
+              <img src="/static/icons/wallet.png" alt="Wallet" />
+            </button>
+            <button id="leaderboardButton" class="icon-btn" aria-label="Leaderboard">
+              <img src="/static/icons/trophy.png" alt="Leaderboard" />
+            </button>
+
+            <button id="langEn" class="lang-btn lang-active">EN</button>
+            <button id="langTr" class="lang-btn">TR</button>
+          </div>
         </div>
-    </div>
 
-    <!-- Leaderboard Popup -->
-    <div id="leaderPopup" class="popup hidden">
-        <div class="popupInner">
-            <button class="closeBtn" id="closeLeaderboard">×</button>
-            <h2>Top 10 Players</h2>
-            <div id="leaderList"></div>
-            <div id="yourRank"></div>
+        <div class="stats-row">
+          <div class="stat-pill">
+            <span class="stat-label">Coins</span>
+            <span class="stat-value" id="coinsValue">0</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-label">Tap Power</span>
+            <span class="stat-value" id="tapPowerValue">1</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-label">TON Credits</span>
+            <span class="stat-value" id="tonCreditsValue">0.00</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-label">User</span>
+            <span class="stat-value" id="userIdValue">—</span>
+          </div>
         </div>
-    </div>
 
-    <script src="/static/app.js"></script>
+        <div class="tap-wrapper">
+          <button id="tapButton" class="tap-button">TAP</button>
+        </div>
+
+        <div class="tap-helper">
+          🟣 Sponsored
+          <div id="adsgramSlot" style="margin-top:6px;"></div>
+        </div>
+
+        <div class="bottom-actions">
+          <button id="upgradeButton" class="primary-btn">Increase Tap Power (cost: 100 coins)</button>
+          <button id="dailyTasksButton" class="secondary-btn">Daily Tasks</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Daily Tasks Modal -->
+  <div id="dailyTasksModal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Daily tasks</div>
+        <button id="closeTasks" class="modal-close-btn">×</button>
+      </div>
+      <ul id="tasksList" class="tasks-list"></ul>
+    </div>
+  </div>
+
+  <!-- Leaderboard Modal -->
+  <div id="leaderboardModal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Top 10 Players</div>
+        <button id="closeLeaderboard" class="modal-close-btn">×</button>
+      </div>
+      <ul id="leaderboardList" class="leaderboard-list"></ul>
+      <div id="yourRank" class="your-rank"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
 </body>
 </html>

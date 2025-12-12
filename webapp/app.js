@@ -91,6 +91,7 @@ const levelValueEl = $("levelValue");
 const coinsValueEl = $("coinsValue");
 const tapPowerValueEl = $("tapPowerValue");
 const tonCreditsValueEl = $("tonCreditsValue");
+const userIdValueEl = $("userIdValue");
 const nextLevelLabelEl = $("nextLevelLabel");
 const xpProgressInnerEl = $("xpProgressInner");
 
@@ -174,6 +175,8 @@ function updateUIFromState() {
     if (levelValueEl) levelValueEl.textContent = gameState.level;
     if (coinsValueEl) coinsValueEl.textContent = gameState.coins;
     if (tapPowerValueEl) tapPowerValueEl.textContent = gameState.tapPower;
+    if (userIdValueEl) userIdValueEl.textContent = userId ? String(userId) : "—";
+
     if (tonCreditsValueEl) tonCreditsValueEl.textContent = gameState.tonCredits.toFixed
         ? gameState.tonCredits.toFixed(2)
         : Number(gameState.tonCredits || 0).toFixed(2);
@@ -333,7 +336,7 @@ async function openLeaderboard() {
     leaderboardListEl.innerHTML = "";
 
     try {
-        const data = await apiFetch("/api/leaderboard", {
+        const data = await apiFetch(`/api/leaderboard?telegram_id=${encodeURIComponent(userId)}`, {
             method: "GET"
         });
 
