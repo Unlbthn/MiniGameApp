@@ -26,6 +26,24 @@ Base.metadata.create_all(bind=engine)
 # -------------------- App --------------------
 app = FastAPI(title="TapToEarnTON API (v2)")
 
+# -------------------- Cache-Control (avoid Telegram Web caching static aggressively) --------------------
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+
+
+class NoStoreStaticMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+        if path.startswith("/static/"):
+            # Telegram Web can cache aggressively; disable for rapid iteration
+            response.headers["Cache-Control"] = "no-store"
+        return response
+
+
+app.add_middleware(NoStoreStaticMiddleware)
+
+
 APP_TZ = os.getenv("APP_TZ", "Europe/Istanbul")
 
 
