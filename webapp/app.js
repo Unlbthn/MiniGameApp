@@ -1,422 +1,526 @@
-// app.js – Tap to Earn TON (clean + robust version)
-
-// --- Telegram WebApp & global state ---
+\
+/* TapToEarnTON v2 - app.js (vanilla) */
 
 const tg = window.Telegram ? window.Telegram.WebApp : null;
-if (tg) {
-    tg.expand();
-}
+if (tg) tg.expand();
 
-const userId =
-    tg?.initDataUnsafe?.user?.id ||
-    tg?.initDataUnsafe?.user?.ID ||
-    null;
-
-if (!userId) {
-    console.warn("Telegram user id bulunamadı. WebApp dışında test ediyor olabilirsin.");
-}
-
-let gameState = {
-    level: 1,
-    coins: 0,
-    tapPower: 1,
-    tonCredits: 0,
-    currentXp: 0,
-    nextLevelXp: 1000
-};
-
-let currentLocale = "en";
-let isTapping = false;
-
-// --- Helpers ---
-
+// ---- Helpers ----
 function webAlert(message) {
-    if (tg && typeof tg.showAlert === "function") {
-        tg.showAlert(message);
-    } else {
-        alert(message);
-    }
+  if (tg && typeof tg.showAlert === "function") tg.showAlert(message);
+  else alert(message);
 }
 
 async function apiFetch(path, options = {}) {
-    const url = `${window.location.origin}${path}`;
-    const headers = options.headers || {};
-    if (!(options.body instanceof FormData)) {
-        headers["Content-Type"] = headers["Content-Type"] || "application/json";
-    }
-
-    const finalOptions = {
-        method: options.method || "GET",
-        headers,
-        body: options.body
-    };
-
-    try {
-        const res = await fetch(url, finalOptions);
-        if (!res.ok) {
-            const text = await res.text();
-            console.error(`API error ${path}:`, res.status, text);
-            throw new Error(`HTTP ${res.status}`);
-        }
-        // Bazı endpoint’ler boş dönebilir, o yüzden json parse’ı try-catch’liyoruz
-        try {
-            return await res.json();
-        } catch (e) {
-            return {};
-        }
-    } catch (err) {
-        console.error("apiFetch error:", err);
-        webAlert("Connection error, please try again.");
-        throw err;
-    }
+  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  const res = await fetch(path, { ...options, headers });
+  const text = await res.text();
+  let data;
+  try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
+  if (!res.ok) {
+    const msg = data?.detail || data?.message || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return data;
 }
 
-// Backend farklı alan adları kullanırsa da çalışsın diye
-function extractUserFromResponse(data) {
-    if (!data) return {};
-    // Eğer data.user varsa onu al
-    if (data.user) return data.user;
+function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
-    // Yoksa direkt data’yı user kabul et
-    return data;
-}
-
-// --- DOM Referansları ---
-
-function $(id) {
-    return document.getElementById(id);
-}
-
-const levelValueEl = $("levelValue");
-const coinsValueEl = $("coinsValue");
-const tapPowerValueEl = $("tapPowerValue");
-const tonCreditsValueEl = $("tonCreditsValue");
-const userIdValueEl = $("userIdValue");
-const nextLevelLabelEl = $("nextLevelLabel");
-const xpProgressInnerEl = $("xpProgressInner");
-
-const tapButtonEl = $("tapButton");
-const upgradeButtonEl = $("upgradeButton");
-const dailyTasksButtonEl = $("dailyTasksButton");
-const walletButtonEl = $("walletButton");
-const leaderboardButtonEl = $("leaderboardButton");
-
-const langEnBtn = $("langEn");
-const langTrBtn = $("langTr");
-
-const dailyTasksModalEl = $("dailyTasksModal");
-const tasksListEl = $("tasksList");
-const closeTasksEl = $("closeTasks");
-
-const leaderboardModalEl = $("leaderboardModal");
-const leaderboardListEl = $("leaderboardList");
-const closeLeaderboardEl = $("closeLeaderboard");
-
-// --- i18n ---
-
-const messages = {
-    en: {
-        tapFailed: "Tap failed, please try again.",
-        notEnoughCoins: "Not enough coins to upgrade tap power.",
-        walletSoon: "TON wallet linking will be available soon.",
-        leaderboardTitle: "Top 10 Players",
-        yourRank: rank => `Your rank: ${rank}`,
-        dailyTasksTitle: "Daily tasks",
-        inviteFriends: "Invite friends",
-        visitChannel: "Visit partner channel",
-        watchAd: "Watch ad & get reward"
-    },
-    tr: {
-        tapFailed: "Tıklama başarısız, lütfen tekrar dene.",
-        notEnoughCoins: "Tap gücünü arttırmak için yeterli coinin yok.",
-        walletSoon: "TON cüzdan eşleştirme yakında aktif olacak.",
-        leaderboardTitle: "En iyi 10 oyuncu",
-        yourRank: rank => `Senin sıran: ${rank}.`,
-        dailyTasksTitle: "Günlük görevler",
-        inviteFriends: "Arkadaşlarını davet et",
-        visitChannel: "Partner kanalını ziyaret et",
-        watchAd: "Reklam izle, ödül kazan"
-    }
+// ---- i18n ----
+const I18N = {
+  en: {
+    title: "TapToEarn",
+    subtitle: "Tap, level up, earn TON Credits.",
+    level: "Level",
+    tapPower: "Tap Power",
+    weeklyScore: "Weekly Score",
+    totalTaps: "Total Taps",
+    daily: "Daily",
+    settings: "Settings",
+    leaderboard: "Leaderboard",
+    xp: "XP",
+    adHint: "Every 100 taps, an Adsgram video can be shown automatically.",
+    adWatch: "Ad Watch",
+    adWatchDesc: "Watch an ad to earn TON Credits",
+    dailyTasks: "Daily Tasks",
+    watch: "Watch",
+    open: "Open",
+    check: "Check",
+    claimed: "Claimed",
+    wallet: "Wallet",
+    walletDesc: "Connect TON wallet (TonConnect)",
+    notConnected: "Not connected",
+    connected: "Connected",
+    walletAddress: "Wallet Address",
+    walletPasteHint: "If TonConnect is not available, paste your address and Save.",
+    save: "Save",
+    preferences: "Preferences",
+    language: "Language",
+    sound: "Sound",
+    vibration: "Vibration",
+    notifications: "Notifications",
+    botBased: "Bot-based",
+    weeklyPrize: "Weekly #1 gets +0.5 TON Credit when the week resets.",
+    weekly: "Weekly",
+    allTime: "All-time",
+    upgraded: "Tap power upgraded!",
+  },
+  tr: {
+    title: "TapToEarn",
+    subtitle: "Tapla, seviye atla, TON Credits kazan.",
+    level: "Seviye",
+    tapPower: "Tap Gücü",
+    weeklyScore: "Haftalık Skor",
+    totalTaps: "Toplam Tap",
+    daily: "Günlük",
+    settings: "Ayarlar",
+    leaderboard: "Liderlik",
+    xp: "XP",
+    adHint: "Her 100 tap’te otomatik Adsgram videosu gösterilebilir.",
+    adWatch: "Reklam İzle",
+    adWatchDesc: "Reklam izleyerek TON Credits kazan",
+    dailyTasks: "Günlük Görevler",
+    watch: "İzle",
+    open: "Git",
+    check: "Check",
+    claimed: "Alındı",
+    wallet: "Cüzdan",
+    walletDesc: "TON cüzdanını bağla (TonConnect)",
+    notConnected: "Bağlı değil",
+    connected: "Bağlandı",
+    walletAddress: "Cüzdan Adresi",
+    walletPasteHint: "TonConnect çalışmıyorsa adresi yapıştırıp Kaydet'e bas.",
+    save: "Kaydet",
+    preferences: "Tercihler",
+    language: "Dil",
+    sound: "Ses",
+    vibration: "Titreşim",
+    notifications: "Bildirimler",
+    botBased: "Bot ile",
+    weeklyPrize: "Haftalık 1.'ye hafta reset olunca +0.5 TON Credit verilir.",
+    weekly: "Haftalık",
+    allTime: "Tüm Zamanlar",
+    upgraded: "Tap gücü yükseltildi!",
+  }
 };
 
-function t(key, ...args) {
-    const dict = messages[currentLocale] || messages.en;
-    const value = dict[key] || messages.en[key] || "";
-    if (typeof value === "function") {
-        return value(...args);
+let locale = "en";
+function t(key) { return (I18N[locale] && I18N[locale][key]) || I18N.en[key] || key; }
+
+// ---- User state ----
+let user = null;
+let taskOpenTimes = {}; // taskId -> timestamp
+let isTapping = false;
+
+// ---- Adsgram ----
+// Replace with your real block ids later
+const ADS_BLOCK_AUTO = "ADS_KEY_TEST_AUTO";
+const ADS_BLOCK_REWARD = "ADS_KEY_TEST_REWARD";
+
+let AdAuto = null;
+let AdReward = null;
+function initAds() {
+  try {
+    if (window.Adsgram && typeof window.Adsgram.init === "function") {
+      AdAuto = window.Adsgram.init({ blockId: ADS_BLOCK_AUTO });
+      AdReward = window.Adsgram.init({ blockId: ADS_BLOCK_REWARD });
     }
-    return value;
+  } catch (e) {
+    console.warn("Adsgram init error:", e);
+  }
 }
 
-function setLocale(locale) {
-    currentLocale = locale === "tr" ? "tr" : "en";
-
-    if (langEnBtn) {
-        langEnBtn.classList.toggle("lang-active", currentLocale === "en");
-    }
-    if (langTrBtn) {
-        langTrBtn.classList.toggle("lang-active", currentLocale === "tr");
-    }
-
-    if (dailyTasksButtonEl) {
-        dailyTasksButtonEl.textContent = currentLocale === "en" ? "Daily Tasks" : "Günlük Görevler";
-    }
-    if (upgradeButtonEl) {
-        upgradeButtonEl.textContent =
-            currentLocale === "en"
-                ? "Increase Tap Power (cost: 100 coins)"
-                : "Tap Gücünü Arttır (maliyet: 100 coin)";
-    }
+async function showAd(controller) {
+  if (!controller || typeof controller.show !== "function") {
+    webAlert("Ads not ready (replace blockId / check Adsgram).");
+    return { ok: false };
+  }
+  try {
+    await controller.show();
+    return { ok: true };
+  } catch (e) {
+    console.warn("Adsgram show error:", e);
+    return { ok: false, error: e };
+  }
 }
 
-// --- UI Güncelleme ---
+// ---- Sound + Vibration ----
+const coinAudio = new Audio("/static/assets/coin.wav");
+coinAudio.preload = "auto";
 
-function updateUIFromState() {
-    if (levelValueEl) levelValueEl.textContent = gameState.level;
-    if (coinsValueEl) coinsValueEl.textContent = gameState.coins;
-    if (tapPowerValueEl) tapPowerValueEl.textContent = gameState.tapPower;
-    if (userIdValueEl) userIdValueEl.textContent = userId ? String(userId) : "—";
-
-    if (tonCreditsValueEl) tonCreditsValueEl.textContent = gameState.tonCredits.toFixed
-        ? gameState.tonCredits.toFixed(2)
-        : Number(gameState.tonCredits || 0).toFixed(2);
-
-    if (nextLevelLabelEl) {
-        nextLevelLabelEl.textContent = `${gameState.currentXp} / ${gameState.nextLevelXp}`;
-    }
-
-    // Progress bar
-    if (xpProgressInnerEl) {
-        const ratio =
-            gameState.nextLevelXp > 0
-                ? Math.max(0, Math.min(1, gameState.currentXp / gameState.nextLevelXp))
-                : 0;
-        xpProgressInnerEl.style.width = `${ratio * 100}%`;
-    }
+function playCoinSound() {
+  if (!user?.sound_enabled) return;
+  try {
+    coinAudio.currentTime = 0;
+    coinAudio.play().catch(() => {});
+  } catch {}
 }
 
-function hydrateStateFromUser(user) {
-    if (!user) return;
-    // Backend alan adlarına göre esnek davran
-    gameState.level = user.level ?? gameState.level;
-    gameState.coins = user.coins ?? user.total_coins ?? gameState.coins;
-    gameState.tapPower = user.tap_power ?? user.tapPower ?? gameState.tapPower;
-    gameState.tonCredits = user.ton_credits ?? user.tonCredits ?? gameState.tonCredits;
-    gameState.currentXp = user.current_xp ?? user.exp ?? user.xp ?? gameState.currentXp;
-    gameState.nextLevelXp = user.next_level_xp ?? user.nextLevelXp ?? gameState.nextLevelXp;
-    updateUIFromState();
+function vibrate() {
+  if (!user?.vibration_enabled) return;
+  try {
+    if (tg?.HapticFeedback?.impactOccurred) tg.HapticFeedback.impactOccurred("light");
+    else if (navigator.vibrate) navigator.vibrate(15);
+  } catch {}
 }
 
-// --- API ile entegrasyon ---
-
-async function loadUser() {
-    if (!userId) return;
-    try {
-        const data = await apiFetch(`/api/me?telegram_id=${encodeURIComponent(userId)}`, {
-            method: "GET"
-        });
-        const user = extractUserFromResponse(data);
-        hydrateStateFromUser(user);
-    } catch (err) {
-        console.error("loadUser error:", err);
-    }
-}
-
-async function handleTap() {
-    if (!userId || isTapping) return;
-    isTapping = true;
-
-    try {
-        const data = await apiFetch("/api/tap", {
-            method: "POST",
-            body: JSON.stringify({ telegram_id: userId })
-        });
-
-        const user = extractUserFromResponse(data);
-        if (!user) {
-            console.warn("Tap response without user:", data);
-            webAlert(t("tapFailed"));
-        } else {
-            hydrateStateFromUser(user);
-        }
-    } catch (err) {
-        console.error("handleTap error:", err);
-        webAlert(t("tapFailed"));
-    } finally {
-        isTapping = false;
-    }
-}
-
-async function handleUpgradeTapPower() {
-    if (!userId) return;
-
-    if (gameState.coins < 100) {
-        webAlert(t("notEnoughCoins"));
-        return;
-    }
-
-    try {
-        const data = await apiFetch("/api/upgrade_tap_power", {
-            method: "POST",
-            body: JSON.stringify({ telegram_id: userId })
-        });
-        const user = extractUserFromResponse(data);
-        hydrateStateFromUser(user);
-    } catch (err) {
-        console.error("handleUpgradeTapPower error:", err);
-    }
-}
-
-// --- Daily Tasks (şimdilik basic, sonra AdsGram ile doldurulabilir) ---
-
-function openDailyTasks() {
-    if (!dailyTasksModalEl || !tasksListEl) return;
-
-    tasksListEl.innerHTML = "";
-
-    const tasks = [
-        { id: "watch_ad", labelEn: t("watchAd"), labelTr: t("watchAd") },
-        { id: "invite", labelEn: t("inviteFriends"), labelTr: t("inviteFriends") },
-        { id: "visit", labelEn: t("visitChannel"), labelTr: t("visitChannel") }
-    ];
-
-    tasks.forEach(task => {
-        const li = document.createElement("li");
-        li.className = "task-item";
-
-        const span = document.createElement("span");
-        span.textContent = currentLocale === "en" ? task.labelEn : task.labelTr;
-
-        const btn = document.createElement("button");
-        btn.className = "task-check-btn";
-        btn.textContent = currentLocale === "en" ? "Go" : "Git";
-
-        btn.addEventListener("click", () => {
-            // Şimdilik sadece örnek – gerçek davranışlar sonradan AdsGram / referans linki ile bağlanacak
-            if (task.id === "watch_ad") {
-                webAlert("Rewarded ad integration will be added soon.");
-            } else if (task.id === "invite") {
-                if (tg && tg.openTelegramLink) {
-                    tg.openTelegramLink(`https://t.me/share/url?url=t.me/${tg.initDataUnsafe?.user?.username || ""}`);
-                } else {
-                    webAlert("Share link will be available in Telegram.");
-                }
-            } else if (task.id === "visit") {
-                if (tg && tg.openTelegramLink) {
-                    tg.openTelegramLink("https://t.me/taptoearnton"); // Örnek kanal
-                } else {
-                    window.open("https://t.me/taptoearnton", "_blank");
-                }
-            }
-        });
-
-        li.appendChild(span);
-        li.appendChild(btn);
-        tasksListEl.appendChild(li);
+// ---- TonConnect ----
+let tonConnectUI = null;
+function initTonConnect() {
+  try {
+    if (!window.TON_CONNECT_UI?.TonConnectUI) return;
+    tonConnectUI = new window.TON_CONNECT_UI.TonConnectUI({
+      manifestUrl: `${window.location.origin}/static/tonconnect-manifest.json`,
+      buttonRootId: "tonConnectButton",
     });
 
-    dailyTasksModalEl.classList.add("modal-visible");
+    tonConnectUI.onStatusChange(async (wallet) => {
+      const statusEl = document.getElementById("walletStatus");
+      if (wallet?.account?.address) {
+        statusEl.textContent = `${t("connected")}: ${wallet.account.address.slice(0, 6)}…${wallet.account.address.slice(-4)}`;
+        // persist
+        await saveSettings({ wallet_address: wallet.account.address });
+      } else {
+        statusEl.textContent = t("notConnected");
+      }
+    });
+  } catch (e) {
+    console.warn("TonConnect init error:", e);
+  }
 }
 
-function closeDailyTasks() {
-    if (dailyTasksModalEl) {
-        dailyTasksModalEl.classList.remove("modal-visible");
-    }
+// ---- Telegram user ----
+const userId = tg?.initDataUnsafe?.user?.id ?? null;
+const userName = tg?.initDataUnsafe?.user?.first_name ?? null;
+const tgLang = (tg?.initDataUnsafe?.user?.language_code || "en").toLowerCase();
+
+// ---- DOM ----
+const el = (id) => document.getElementById(id);
+
+function applyLocaleTexts() {
+  el("title").textContent = t("title");
+  el("subtitle").textContent = t("subtitle");
+
+  el("levelLabel").textContent = t("level");
+  el("tapPowerLabel").textContent = t("tapPower");
+  el("weeklyScoreLabel").textContent = t("weeklyScore");
+  el("totalTapsLabel").textContent = t("totalTaps");
+
+  el("dailyText").textContent = t("daily");
+  el("upgradeText").textContent = t("tapPower");
+  el("adHint").textContent = t("adHint");
+
+  el("tasksTitle").textContent = t("daily");
+  el("adWatchTitle").textContent = t("adWatch");
+  el("adWatchDesc").textContent = t("adWatchDesc");
+  el("dailyTasksTitle").textContent = t("dailyTasks");
+  el("watchAdBtn").textContent = t("watch");
+
+  el("leaderTitle").textContent = t("leaderboard");
+  el("lbWeeklyLabel").textContent = t("weekly");
+  el("lbAllTimeLabel").textContent = t("allTime");
+
+  el("settingsTitle").textContent = t("settings");
+  el("walletTitle").textContent = t("wallet");
+  el("walletDesc").textContent = t("walletDesc");
+  el("walletAddrLabel").textContent = t("walletAddress");
+  el("walletInputHint").textContent = t("walletPasteHint");
+  el("saveWalletBtn").textContent = t("save");
+  el("prefsTitle").textContent = t("preferences");
+  el("langLabel").textContent = t("language");
+  el("soundLabel").textContent = t("sound");
+  el("vibrationLabel").textContent = t("vibration");
+  el("notifLabel").textContent = t("notifications");
+  el("notifNote").textContent = t("botBased");
+  el("settingsHint").textContent = t("weeklyPrize");
 }
 
-// --- Wallet & Leaderboard ---
-
-function openWallet() {
-    webAlert(t("walletSoon"));
+function setLocale(next) {
+  locale = next === "tr" ? "tr" : "en";
+  applyLocaleTexts();
+  // persist
+  saveSettings({ language: locale }).catch(() => {});
 }
 
-async function openLeaderboard() {
-    if (!leaderboardModalEl || !leaderboardListEl || !userId) return;
+// ---- UI update ----
+function calcUpgradeCost(u) {
+  const tp = u?.tap_power || 1;
+  return 500 * tp;
+}
 
-    leaderboardListEl.innerHTML = "";
+function updateUI() {
+  if (!user) return;
 
-    try {
-        const data = await apiFetch(`/api/leaderboard?telegram_id=${encodeURIComponent(userId)}`, {
-            method: "GET"
+  el("coins").textContent = user.coins.toString();
+  el("tonCredits").textContent = (user.ton_credits ?? 0).toFixed(4);
+  el("level").textContent = user.level.toString();
+  el("tapPower").textContent = user.tap_power.toString();
+  el("weeklyScore").textContent = user.weekly_score.toString();
+  el("totalTaps").textContent = user.total_taps.toString();
+
+  const xpPct = user.next_level_xp > 0 ? (user.xp / user.next_level_xp) * 100 : 0;
+  el("xpFill").style.width = `${clamp(xpPct, 0, 100)}%`;
+  el("xpText").textContent = `${user.xp} / ${user.next_level_xp} XP`;
+
+  el("upgradeCost").textContent = calcUpgradeCost(user).toString();
+
+  // settings toggles
+  el("soundToggle").checked = !!user.sound_enabled;
+  el("vibrationToggle").checked = !!user.vibration_enabled;
+  el("notifToggle").checked = !!user.notifications_enabled;
+  el("langSelect").value = user.language || locale;
+
+  if (user.wallet_address) {
+    el("walletInput").value = user.wallet_address;
+    el("walletStatus").textContent = `${t("connected")}: ${user.wallet_address.slice(0, 6)}…${user.wallet_address.slice(-4)}`;
+  } else {
+    el("walletStatus").textContent = t("notConnected");
+  }
+}
+
+// ---- Modals ----
+function showModal(id) { el(id).classList.remove("hidden"); }
+function hideModal(id) { el(id).classList.add("hidden"); }
+
+// ---- Tasks ----
+function renderTasks(tasks) {
+  const list = el("taskList");
+  list.innerHTML = "";
+
+  tasks.forEach((task) => {
+    const row = document.createElement("div");
+    row.className = "task-row";
+
+    const title = document.createElement("div");
+    title.style.flex = "1";
+    title.textContent = (locale === "tr" ? task.title_tr : task.title_en);
+
+    const actions = document.createElement("div");
+    actions.className = "task-actions";
+
+    const openBtn = document.createElement("button");
+    openBtn.className = "btn-mini";
+    openBtn.textContent = t("open");
+    openBtn.addEventListener("click", () => {
+      taskOpenTimes[task.id] = Date.now();
+      if (tg?.openTelegramLink && task.url.startsWith("https://t.me/")) tg.openTelegramLink(task.url);
+      else if (tg?.openLink) tg.openLink(task.url);
+      else window.open(task.url, "_blank");
+    });
+
+    const checkBtn = document.createElement("button");
+    checkBtn.className = "btn-mini primary";
+    checkBtn.textContent = task.claimed ? t("claimed") : t("check");
+    checkBtn.disabled = !!task.claimed;
+
+    checkBtn.addEventListener("click", async () => {
+      const openedAt = taskOpenTimes[task.id] || 0;
+      const openAgeSec = openedAt ? Math.floor((Date.now() - openedAt) / 1000) : 0;
+
+      try {
+        const res = await apiFetch("/api/task/check", {
+          method: "POST",
+          body: JSON.stringify({ telegram_id: userId, task_id: task.id, open_age_sec: openAgeSec }),
         });
 
-        const players = data.leaderboard || data.players || [];
-        const yourRank = data.your_rank ?? data.rank ?? null;
+        if (res?.user) user = res.user;
+        updateUI();
 
-        players.forEach((p, index) => {
-            const li = document.createElement("li");
-            li.className = "leaderboard-item";
-
-            const posSpan = document.createElement("span");
-            posSpan.className = "leaderboard-pos";
-            posSpan.textContent = `${index + 1}.`;
-
-            const nameSpan = document.createElement("span");
-            nameSpan.className = "leaderboard-name";
-            nameSpan.textContent = p.username || p.name || `User ${index + 1}`;
-
-            const scoreSpan = document.createElement("span");
-            scoreSpan.className = "leaderboard-score";
-            scoreSpan.textContent = `${p.total_coins ?? p.coins ?? 0}`;
-
-            li.appendChild(posSpan);
-            li.appendChild(nameSpan);
-            li.appendChild(scoreSpan);
-
-            leaderboardListEl.appendChild(li);
-        });
-
-        const rankInfo = $("yourRank");
-        if (rankInfo && yourRank != null) {
-            rankInfo.textContent = t("yourRank", yourRank);
+        if (res.success) {
+          checkBtn.textContent = t("claimed");
+          checkBtn.disabled = true;
+          playCoinSound();
+          vibrate();
+        } else {
+          webAlert(res.message || "Task not completed yet");
         }
 
-        leaderboardModalEl.classList.add("modal-visible");
-    } catch (err) {
-        console.error("openLeaderboard error:", err);
-    }
+        // refresh tasks view
+        await loadTasks();
+      } catch (e) {
+        webAlert(e.message || "Task check failed");
+      }
+    });
+
+    actions.appendChild(openBtn);
+    actions.appendChild(checkBtn);
+
+    row.appendChild(title);
+    row.appendChild(actions);
+    list.appendChild(row);
+  });
 }
 
-function closeLeaderboard() {
-    if (leaderboardModalEl) {
-        leaderboardModalEl.classList.remove("modal-visible");
-    }
+async function loadTasks() {
+  const data = await apiFetch(`/api/tasks?telegram_id=${encodeURIComponent(userId)}`);
+  const tasks = data.tasks || [];
+  renderTasks(tasks);
+
+  const watched = data?.ad_watch?.watched ?? 0;
+  el("adWatchStatus").textContent = watched.toString();
+  el("watchAdBtn").disabled = watched >= 10;
 }
 
-// --- Event binding & init ---
-
-function bindEvents() {
-    if (tapButtonEl) {
-        tapButtonEl.addEventListener("click", handleTap);
-    }
-    if (upgradeButtonEl) {
-        upgradeButtonEl.addEventListener("click", handleUpgradeTapPower);
-    }
-    if (dailyTasksButtonEl) {
-        dailyTasksButtonEl.addEventListener("click", openDailyTasks);
-    }
-    if (walletButtonEl) {
-        walletButtonEl.addEventListener("click", openWallet);
-    }
-    if (leaderboardButtonEl) {
-        leaderboardButtonEl.addEventListener("click", openLeaderboard);
-    }
-    if (closeTasksEl) {
-        closeTasksEl.addEventListener("click", closeDailyTasks);
-    }
-    if (closeLeaderboardEl) {
-        closeLeaderboardEl.addEventListener("click", closeLeaderboard);
-    }
-    if (langEnBtn) {
-        langEnBtn.addEventListener("click", () => setLocale("en"));
-    }
-    if (langTrBtn) {
-        langTrBtn.addEventListener("click", () => setLocale("tr"));
-    }
+// ---- Settings save ----
+async function saveSettings(partial) {
+  if (!userId) return;
+  const data = await apiFetch("/api/settings", {
+    method: "POST",
+    body: JSON.stringify({ telegram_id: userId, ...partial }),
+  });
+  if (data?.user) user = data.user;
+  updateUI();
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    setLocale("en"); // varsayılan
-    bindEvents();
-    loadUser();
-});
+// ---- Load user ----
+async function loadUser() {
+  const langGuess = (tgLang === "tr" ? "tr" : "en");
+  const data = await apiFetch("/api/me", {
+    method: "POST",
+    body: JSON.stringify({ telegram_id: userId, name: userName, language: langGuess }),
+  });
+  user = data.user;
+  locale = user.language || langGuess;
+  applyLocaleTexts();
+  updateUI();
+}
+
+// ---- Tap handler ----
+async function handleTap() {
+  if (!userId || isTapping) return;
+  isTapping = true;
+
+  playCoinSound();
+  vibrate();
+
+  try {
+    const data = await apiFetch("/api/tap", {
+      method: "POST",
+      body: JSON.stringify({ telegram_id: userId, name: userName, language: locale }),
+    });
+    if (data?.user) user = data.user;
+    updateUI();
+
+    // Auto ad each 100 taps (client-side trigger)
+    if (user?.total_taps && user.total_taps % 100 === 0) {
+      // don't block tapping too long; fire and forget
+      showAd(AdAuto).catch(() => {});
+    }
+  } catch (e) {
+    webAlert(e.message || "Tap failed");
+  } finally {
+    isTapping = false;
+  }
+}
+
+// ---- Upgrade ----
+async function handleUpgrade() {
+  if (!userId) return;
+  try {
+    const data = await apiFetch("/api/upgrade_tap_power", {
+      method: "POST",
+      body: JSON.stringify({ telegram_id: userId }),
+    });
+    if (data?.user) user = data.user;
+    updateUI();
+    webAlert(t("upgraded"));
+  } catch (e) {
+    webAlert(e.message || "Upgrade failed");
+  }
+}
+
+// ---- Watch ad ----
+async function handleWatchAd() {
+  if (!userId) return;
+
+  // show ad first (rewarded)
+  const r = await showAd(AdReward);
+  if (!r.ok) return;
+
+  // then credit
+  try {
+    const data = await apiFetch("/api/adwatched", {
+      method: "POST",
+      body: JSON.stringify({ telegram_id: userId }),
+    });
+    if (data?.user) user = data.user;
+    updateUI();
+    await loadTasks();
+    playCoinSound();
+    vibrate();
+  } catch (e) {
+    webAlert(e.message || "Ad reward failed");
+  }
+}
+
+// ---- Leaderboard ----
+async function loadLeaderboard(scope) {
+  const data = await apiFetch(`/api/leaderboard?scope=${encodeURIComponent(scope)}&telegram_id=${encodeURIComponent(userId)}`);
+  const list = el("leaderList");
+  list.innerHTML = "";
+
+  (data.leaderboard || []).forEach((row, idx) => {
+    const div = document.createElement("div");
+    div.className = "task-row";
+    div.innerHTML = `<div style="flex:1; font-weight:900;">#${idx + 1} ${row.name}</div>
+                     <div class="badge">${row.score}</div>`;
+    list.appendChild(div);
+  });
+
+  el("yourRank").textContent = data.your_rank ? `Your rank: #${data.your_rank}` : "";
+}
+
+// ---- Bindings ----
+function bindUI() {
+  el("tapBtn").addEventListener("click", handleTap);
+  el("upgradeBtn").addEventListener("click", handleUpgrade);
+
+  el("tasksBtn").addEventListener("click", async () => {
+    showModal("tasksModal");
+    await loadTasks();
+  });
+  el("closeTasks").addEventListener("click", () => hideModal("tasksModal"));
+
+  el("btnLeaderboard").addEventListener("click", async () => {
+    showModal("leaderModal");
+    await loadLeaderboard("weekly");
+  });
+  el("closeLeader").addEventListener("click", () => hideModal("leaderModal"));
+
+  el("lbWeekly").addEventListener("change", () => loadLeaderboard("weekly"));
+  el("lbAllTime").addEventListener("change", () => loadLeaderboard("all_time"));
+
+  el("btnSettings").addEventListener("click", () => showModal("settingsModal"));
+  el("closeSettings").addEventListener("click", () => hideModal("settingsModal"));
+
+  el("langSelect").addEventListener("change", (e) => setLocale(e.target.value));
+
+  el("soundToggle").addEventListener("change", (e) => saveSettings({ sound_enabled: e.target.checked }));
+  el("vibrationToggle").addEventListener("change", (e) => saveSettings({ vibration_enabled: e.target.checked }));
+  el("notifToggle").addEventListener("change", (e) => saveSettings({ notifications_enabled: e.target.checked }));
+
+  el("saveWalletBtn").addEventListener("click", () => {
+    const val = el("walletInput").value.trim();
+    saveSettings({ wallet_address: val || null });
+  });
+
+  el("watchAdBtn").addEventListener("click", handleWatchAd);
+}
+
+// ---- Boot ----
+(async function boot() {
+  initAds();
+  initTonConnect();
+  bindUI();
+
+  if (!userId) {
+    webAlert("Telegram user id not found. Open inside Telegram Mini App.");
+    return;
+  }
+
+  try {
+    await loadUser();
+  } catch (e) {
+    console.error(e);
+    webAlert(e.message || "Failed to load user");
+  }
+})();

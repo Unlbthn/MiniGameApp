@@ -3,102 +3,192 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Tap to Earn TON</title>
+  <title>TapToEarn TON</title>
 
   <link rel="stylesheet" href="/static/styles.css" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://unpkg.com/@tonconnect/ui@2.0.0/dist/tonconnect-ui.min.js"></script>
   <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 </head>
-
 <body>
   <div class="app-root">
+    <div class="topbar">
+      <button id="btnLeaderboard" class="icon-btn" title="Leaderboard">🏆</button>
+
+      <div class="topbar-center">
+        <div class="pill" title="Coins">🪙 <span id="coins">0</span></div>
+        <div class="pill" title="TON Credits">💎 <span id="tonCredits">0.0000</span></div>
+      </div>
+
+      <button id="btnSettings" class="icon-btn" title="Settings">⚙️</button>
+    </div>
+
     <div class="game-card">
-      <div class="game-card-inner">
+      <div class="title" id="title">TapToEarn</div>
+      <div class="subtitle" id="subtitle">Tap, level up, earn TON Credits.</div>
 
-        <div class="top-bar">
-          <div class="level-row">
-            <div class="level-row-main">
-              <div class="level-label">Level</div>
-              <div class="level-value"><span id="levelValue">1</span></div>
-            </div>
-
-            <div class="xp-progress">
-              <div id="xpProgressInner" class="xp-progress-inner"></div>
-            </div>
-            <div id="nextLevelLabel" class="next-level-label">0 / 1000</div>
-          </div>
-
-          <div class="top-actions">
-            <button id="walletButton" class="icon-btn" aria-label="Wallet">
-              <img src="/static/icons/wallet.png" alt="Wallet" />
-            </button>
-            <button id="leaderboardButton" class="icon-btn" aria-label="Leaderboard">
-              <img src="/static/icons/trophy.png" alt="Leaderboard" />
-            </button>
-
-            <button id="langEn" class="lang-btn lang-active">EN</button>
-            <button id="langTr" class="lang-btn">TR</button>
-          </div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label" id="levelLabel">Level</div>
+          <div class="stat-value"><span id="level">1</span></div>
         </div>
-
-        <div class="stats-row">
-          <div class="stat-pill">
-            <span class="stat-label">Coins</span>
-            <span class="stat-value" id="coinsValue">0</span>
-          </div>
-          <div class="stat-pill">
-            <span class="stat-label">Tap Power</span>
-            <span class="stat-value" id="tapPowerValue">1</span>
-          </div>
-          <div class="stat-pill">
-            <span class="stat-label">TON Credits</span>
-            <span class="stat-value" id="tonCreditsValue">0.00</span>
-          </div>
-          <div class="stat-pill">
-            <span class="stat-label">User</span>
-            <span class="stat-value" id="userIdValue">—</span>
-          </div>
+        <div class="stat-card">
+          <div class="stat-label" id="tapPowerLabel">Tap Power</div>
+          <div class="stat-value"><span id="tapPower">1</span></div>
         </div>
-
-        <div class="tap-wrapper">
-          <button id="tapButton" class="tap-button">TAP</button>
+        <div class="stat-card">
+          <div class="stat-label" id="weeklyScoreLabel">Weekly Score</div>
+          <div class="stat-value"><span id="weeklyScore">0</span></div>
         </div>
-
-        <div class="tap-helper">
-          🟣 Sponsored
-          <div id="adsgramSlot" style="margin-top:6px;"></div>
+        <div class="stat-card">
+          <div class="stat-label" id="totalTapsLabel">Total Taps</div>
+          <div class="stat-value"><span id="totalTaps">0</span></div>
         </div>
+      </div>
 
-        <div class="bottom-actions">
-          <button id="upgradeButton" class="primary-btn">Increase Tap Power (cost: 100 coins)</button>
-          <button id="dailyTasksButton" class="secondary-btn">Daily Tasks</button>
-        </div>
+      <div class="xp-wrap">
+        <div class="xp-bar"><div id="xpFill" class="xp-fill"></div></div>
+        <div class="xp-text" id="xpText">0 / 1000 XP</div>
+      </div>
 
+      <button id="tapBtn" class="tap-btn">TAP</button>
+
+      <div class="actions-row">
+        <button id="upgradeBtn" class="btn btn-primary">
+          ⬆️ <span id="upgradeText">Tap Power</span> · <span id="upgradeCost">500</span> 🪙
+        </button>
+        <button id="tasksBtn" class="btn">🎯 <span id="dailyText">Daily</span></button>
+      </div>
+
+      <div class="small-note" id="adHint">
+        Every 100 taps, an Adsgram video can be shown automatically.
       </div>
     </div>
   </div>
 
-  <!-- Daily Tasks Modal -->
-  <div id="dailyTasksModal" class="modal-backdrop">
-    <div class="modal">
+  <!-- Daily / Tasks Modal -->
+  <div id="tasksModal" class="modal hidden">
+    <div class="modal-inner">
       <div class="modal-header">
-        <div class="modal-title">Daily tasks</div>
-        <button id="closeTasks" class="modal-close-btn">×</button>
+        <div class="modal-title" id="tasksTitle">Daily</div>
+        <button class="close-btn" id="closeTasks">×</button>
       </div>
-      <ul id="tasksList" class="tasks-list"></ul>
+
+      <div class="section">
+        <div class="section-title" id="adWatchTitle">Ad Watch</div>
+        <div class="task-row">
+          <div>
+            <div id="adWatchDesc">Watch an ad to earn TON Credits</div>
+            <div class="xp-text"><span id="adWatchStatus">0</span>/10 · +0.1 TON</div>
+          </div>
+          <div class="task-actions">
+            <button id="watchAdBtn" class="btn-mini primary">Watch</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title" id="dailyTasksTitle">Daily Tasks</div>
+        <div id="taskList"></div>
+      </div>
     </div>
   </div>
 
   <!-- Leaderboard Modal -->
-  <div id="leaderboardModal" class="modal-backdrop">
-    <div class="modal">
+  <div id="leaderModal" class="modal hidden">
+    <div class="modal-inner">
       <div class="modal-header">
-        <div class="modal-title">Top 10 Players</div>
-        <button id="closeLeaderboard" class="modal-close-btn">×</button>
+        <div class="modal-title" id="leaderTitle">Leaderboard</div>
+        <button class="close-btn" id="closeLeader">×</button>
       </div>
-      <ul id="leaderboardList" class="leaderboard-list"></ul>
-      <div id="yourRank" class="your-rank"></div>
+
+      <div class="section">
+        <div class="task-row">
+          <div class="toggle">
+            <input type="radio" name="lbScope" id="lbWeekly" value="weekly" checked>
+            <label for="lbWeekly" id="lbWeeklyLabel">Weekly</label>
+          </div>
+          <div class="toggle">
+            <input type="radio" name="lbScope" id="lbAllTime" value="all_time">
+            <label for="lbAllTime" id="lbAllTimeLabel">All-time</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div id="leaderList"></div>
+        <div class="xp-text" id="yourRank"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="modal hidden">
+    <div class="modal-inner">
+      <div class="modal-header">
+        <div class="modal-title" id="settingsTitle">Settings</div>
+        <button class="close-btn" id="closeSettings">×</button>
+      </div>
+
+      <div class="section">
+        <div class="section-title" id="walletTitle">Wallet</div>
+        <div class="task-row">
+          <div style="flex:1;">
+            <div id="walletDesc">Connect TON wallet (TonConnect)</div>
+            <div class="xp-text" id="walletStatus">Not connected</div>
+          </div>
+          <div id="tonConnectButton"></div>
+        </div>
+
+        <div class="setting-row">
+          <div style="flex:1;">
+            <div id="walletAddrLabel">Wallet Address</div>
+            <input id="walletInput" class="input" placeholder="EQ...." />
+            <div class="xp-text" id="walletInputHint">If TonConnect is not available, paste your address and Save.</div>
+          </div>
+          <div class="task-actions">
+            <button id="saveWalletBtn" class="btn-mini primary">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title" id="prefsTitle">Preferences</div>
+
+        <div class="setting-row">
+          <div style="flex:1;">
+            <div id="langLabel">Language</div>
+            <select id="langSelect" class="select">
+              <option value="en">English</option>
+              <option value="tr">Türkçe</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <label class="toggle">
+            <input type="checkbox" id="soundToggle" checked />
+            <span id="soundLabel">Sound</span>
+          </label>
+
+          <label class="toggle">
+            <input type="checkbox" id="vibrationToggle" checked />
+            <span id="vibrationLabel">Vibration</span>
+          </label>
+        </div>
+
+        <div class="setting-row">
+          <label class="toggle">
+            <input type="checkbox" id="notifToggle" checked />
+            <span id="notifLabel">Notifications</span>
+          </label>
+          <span class="badge" id="notifNote">Bot-based</span>
+        </div>
+      </div>
+
+      <div class="small-note" id="settingsHint">
+        Weekly #1 gets +0.5 TON Credit when the week resets.
+      </div>
     </div>
   </div>
 
