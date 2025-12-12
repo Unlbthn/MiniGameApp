@@ -1,4 +1,3 @@
-\
 /* TapToEarnTON v2 - app.js (vanilla) */
 
 const tg = window.Telegram ? window.Telegram.WebApp : null;
