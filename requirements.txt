@@ -1,4 +1,4 @@
-fastapi
-uvicorn[standard]
-sqlalchemy
-python-telegram-bot==21.0.1
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+SQLAlchemy==2.0.32
+requests==2.32.3
