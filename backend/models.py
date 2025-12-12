@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime
 from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 
@@ -12,7 +12,7 @@ class User(Base):
     telegram_id = Column(Integer, unique=True, index=True, nullable=False)
 
     # Profil
-    display_name = Column(String, nullable=True)
+    name = Column(String, nullable=True)
 
     # Oyun state
     level = Column(Integer, default=1, nullable=False)
@@ -30,10 +30,8 @@ class User(Base):
     # Daily chest (günde 1)
     last_chest_date = Column(Date, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     tasks = relationship("TaskStatus", back_populates="user")
 
@@ -43,8 +41,8 @@ class TaskStatus(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    task_id = Column(String, index=True, nullable=False)  # e.g. "visit_boinker"
+    task_id = Column(String, index=True, nullable=False)  # e.g. "watch_ad"
     status = Column(String, default="pending", nullable=False)  # pending/checked/claimed
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     user = relationship("User", back_populates="tasks")
