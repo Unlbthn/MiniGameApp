@@ -222,6 +222,12 @@ a { color: inherit; text-decoration: none; }
   border: 1px solid rgba(255,255,255,0.12);
   color: #fff;
   outline: none;
+  color-scheme: dark;
+}
+
+.select option {
+  background: #0b1220;
+  color: #fff;
 }
 
 .toggle {
@@ -232,3 +238,21 @@ a { color: inherit; text-decoration: none; }
 }
 
 .toggle input { width: 18px; height: 18px; }
+
+/* Rules content */
+.rules-content h3, .rules-content h4 {
+  margin: 0 0 10px 0;
+}
+.rules-content p {
+  margin: 0 0 12px 0;
+  color: rgba(255,255,255,0.82);
+  line-height: 1.45;
+}
+.rules-content ul {
+  margin: 0 0 14px 18px;
+  padding: 0;
+  color: rgba(255,255,255,0.82);
+}
+.rules-content li {
+  margin: 6px 0;
+}

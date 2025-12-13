@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>TapToEarn TON</title>
 
-  <link rel="stylesheet" href="/static/styles.css?v=2_1_1" />
+  <link rel="stylesheet" href="/static/styles.css?v=2_2" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://unpkg.com/@tonconnect/ui@2.0.0/dist/tonconnect-ui.min.js"></script>
   <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
@@ -58,10 +58,6 @@
           ⬆️ <span id="upgradeText">Tap Power</span> · <span id="upgradeCost">500</span> 🪙
         </button>
         <button id="tasksBtn" class="btn">🎯 <span id="dailyText">Daily</span></button>
-      </div>
-
-      <div class="small-note" id="adHint">
-        Every 100 taps, an Adsgram video can be shown automatically.
       </div>
     </div>
   </div>
@@ -186,12 +182,42 @@
         </div>
       </div>
 
+
+      <div class="section">
+        <div class="section-title" id="infoTitle">Information</div>
+        <div class="task-row">
+          <div style="flex:1;">
+            <div id="rulesLabel">Rules & About</div>
+            <div class="xp-text" id="rulesHint">Program terms, rewards, and anti-fraud policy.</div>
+          </div>
+          <div class="task-actions">
+            <button id="openRulesBtn" class="btn-mini primary">Open</button>
+          </div>
+        </div>
+      </div>
+
       <div class="small-note" id="settingsHint">
         Weekly #1 gets +0.5 TON Credit when the week resets.
       </div>
     </div>
   </div>
 
-  <script src="/static/app.js?v=2_1_1"></script>
+
+
+  <!-- Rules / About Modal -->
+  <div id="rulesModal" class="modal hidden">
+    <div class="modal-inner">
+      <div class="modal-header">
+        <div class="modal-title" id="rulesTitle">Rules & About</div>
+        <button class="close-btn" id="closeRules">×</button>
+      </div>
+
+      <div class="section">
+        <div id="rulesContent" class="rules-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js?v=2_2"></script>
 </body>
 </html>

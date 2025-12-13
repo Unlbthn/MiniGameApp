@@ -36,14 +36,12 @@ const I18N = {
     daily: "Daily",
     settings: "Settings",
     leaderboard: "Leaderboard",
-    xp: "XP",
-    adHint: "Every 100 taps, an Adsgram video can be shown automatically.",
-    adWatch: "Ad Watch",
+    xp: "XP",    adWatch: "Ad Watch",
     adWatchDesc: "Watch an ad to earn TON Credits",
     dailyTasks: "Daily Tasks",
     watch: "Watch",
     open: "Open",
-    check: "Check",
+    check: "Kontrol",
     claimed: "Claimed",
     wallet: "Wallet",
     walletDesc: "Connect TON wallet (TonConnect)",
@@ -59,6 +57,11 @@ const I18N = {
     notifications: "Notifications",
     botBased: "Bot-based",
     weeklyPrize: "Weekly #1 gets +0.5 TON Credit when the week resets.",
+    infoTitle: "Information",
+    rulesLabel: "Rules & About",
+    rulesHint: "Program terms, rewards, and anti-fraud policy.",
+    rulesOpen: "Open",
+    rulesTitle: "Rules & About",
     weekly: "Weekly",
     allTime: "All-time",
     upgraded: "Tap power upgraded!",
@@ -73,14 +76,12 @@ const I18N = {
     daily: "Günlük",
     settings: "Ayarlar",
     leaderboard: "Liderlik",
-    xp: "XP",
-    adHint: "Her 100 tap’te otomatik Adsgram videosu gösterilebilir.",
-    adWatch: "Reklam İzle",
+    xp: "XP",    adWatch: "Reklam İzle",
     adWatchDesc: "Reklam izleyerek TON Credits kazan",
     dailyTasks: "Günlük Görevler",
     watch: "İzle",
     open: "Git",
-    check: "Check",
+    check: "Kontrol",
     claimed: "Alındı",
     wallet: "Cüzdan",
     walletDesc: "TON cüzdanını bağla (TonConnect)",
@@ -96,11 +97,89 @@ const I18N = {
     notifications: "Bildirimler",
     botBased: "Bot ile",
     weeklyPrize: "Haftalık 1.'ye hafta reset olunca +0.5 TON Credit verilir.",
+    infoTitle: "Bilgilendirme",
+    rulesLabel: "Kurallar & Oyun Hakkında",
+    rulesHint: "Program şartları, ödüller ve güvenlik politikası.",
+    rulesOpen: "Aç",
+    rulesTitle: "Kurallar & Oyun Hakkında",
     weekly: "Haftalık",
     allTime: "Tüm Zamanlar",
     upgraded: "Tap gücü yükseltildi!",
   }
 };
+
+// ---- Rules content ----
+const RULES_CONTENT = {
+  en: `
+    <h3>TapToEarnTon – Program Overview</h3>
+    <p>TapToEarnTon is a Telegram Mini App that awards in-app <b>TON Credits</b> for gameplay activity and task completion.</p>
+
+    <h4>1) TON Credits</h4>
+    <ul>
+      <li>TON Credits are an <b>in-app reward unit</b>.</li>
+      <li>We plan to enable conversion to on-chain TON in future versions, subject to compliance, availability, and program rules.</li>
+      <li>Until withdrawal is officially launched, TON Credits remain in-app and have no guaranteed cash value.</li>
+    </ul>
+
+    <h4>2) How to earn</h4>
+    <ul>
+      <li><b>Taps:</b> each tap increases your coins and weekly score.</li>
+      <li><b>Level-up:</b> each level adds <b>+0.1 TON Credits</b>.</li>
+      <li><b>Daily Ad Watch:</b> up to <b>10</b> per day, each completed view adds <b>+0.1 TON Credits</b>.</li>
+      <li><b>Weekly Leaderboard:</b> #1 at weekly reset receives <b>+0.5 TON Credits</b>.</li>
+    </ul>
+
+    <h4>3) Task verification</h4>
+    <ul>
+      <li>Some tasks require real verification via Telegram (e.g., channel membership).</li>
+      <li>If verification fails, rewards are not granted.</li>
+    </ul>
+
+    <h4>4) Fair play & anti-fraud</h4>
+    <ul>
+      <li>Botting, multi-account farming, or manipulation attempts may result in reward cancellation and account restrictions.</li>
+      <li>We may apply manual review to protect the reward pool.</li>
+    </ul>
+
+    <h4>5) Changes</h4>
+    <p>This product is currently in beta. We may update rules, rewards, and limits to maintain stability and fairness.</p>
+  `,
+  tr: `
+    <h3>TapToEarnTon – Program Bilgilendirmesi</h3>
+    <p>TapToEarnTon, oyun içi etkileşim ve görev tamamlamalarıyla <b>TON Credits</b> kazandıran bir Telegram Mini App uygulamasıdır.</p>
+
+    <h4>1) TON Credits</h4>
+    <ul>
+      <li>TON Credits, <b>uygulama içi ödül birimi</b>dir.</li>
+      <li>İlerleyen sürümlerde resmî çekim (withdrawal) özelliği açıldığında, TON Credits’in zincir üstü TON’a dönüştürülmesi planlanmaktadır (uyumluluk, erişilebilirlik ve program kurallarına tabidir).</li>
+      <li>Çekim özelliği resmen aktif edilene kadar TON Credits uygulama içinde kalır; <b>garanti edilmiş nakit değeri yoktur</b>.</li>
+    </ul>
+
+    <h4>2) Nasıl kazanılır?</h4>
+    <ul>
+      <li><b>Tap:</b> her tap coin ve haftalık skorunuzu artırır.</li>
+      <li><b>Seviye Atlama:</b> her seviye artışında <b>+0.1 TON Credits</b> eklenir.</li>
+      <li><b>Günlük Reklam İzle:</b> günde en fazla <b>10</b> kez; her tamamlanan izleme <b>+0.1 TON Credits</b> sağlar.</li>
+      <li><b>Haftalık Liderlik:</b> hafta sıfırlanırken 1. olan kullanıcı <b>+0.5 TON Credits</b> kazanır.</li>
+    </ul>
+
+    <h4>3) Görev doğrulama</h4>
+    <ul>
+      <li>Bazı görevler Telegram üzerinden gerçek doğrulama gerektirir (örn. kanal üyeliği).</li>
+      <li>Doğrulama başarısızsa ödül verilmez.</li>
+    </ul>
+
+    <h4>4) Adil oyun & kötüye kullanım önleme</h4>
+    <ul>
+      <li>Bot kullanımı, çoklu hesapla farm, hile veya manipülasyon tespitinde ödüller iptal edilebilir ve hesap kısıtlanabilir.</li>
+      <li>Ödül havuzunun güvenliği için manuel inceleme uygulanabilir.</li>
+    </ul>
+
+    <h4>5) Değişiklik hakkı</h4>
+    <p>Ürün beta aşamasındadır. Kararlılık ve adalet için kurallar, limitler ve ödüller güncellenebilir.</p>
+  `
+};
+
 
 let locale = "en";
 function t(key) { return (I18N[locale] && I18N[locale][key]) || I18N.en[key] || key; }
@@ -128,9 +207,12 @@ function initAds() {
   }
 }
 
-async function showAd(controller) {
+async function showAd(controller, opts = {}) {
+  const silent = !!opts.silent;
+  const friendly = opts.friendly || null;
+
   if (!controller || typeof controller.show !== "function") {
-    webAlert("Ads not ready (replace blockId / check Adsgram).");
+    if (!silent) webAlert(friendly || (locale === "tr" ? "Reklam şu an hazır değil. Daha sonra tekrar dene." : "Ad is not ready. Please try again later."));
     return { ok: false };
   }
   try {
@@ -138,6 +220,7 @@ async function showAd(controller) {
     return { ok: true };
   } catch (e) {
     console.warn("Adsgram show error:", e);
+    if (!silent) webAlert(friendly || (locale === "tr" ? "Reklam şu anda gösterilemiyor. Lütfen sonra tekrar dene." : "Ad cannot be shown right now. Please try again later."));
     return { ok: false, error: e };
   }
 }
@@ -206,8 +289,6 @@ function applyLocaleTexts() {
 
   el("dailyText").textContent = t("daily");
   el("upgradeText").textContent = t("tapPower");
-  el("adHint").textContent = t("adHint");
-
   el("tasksTitle").textContent = t("daily");
   el("adWatchTitle").textContent = t("adWatch");
   el("adWatchDesc").textContent = t("adWatchDesc");
@@ -230,7 +311,16 @@ function applyLocaleTexts() {
   el("vibrationLabel").textContent = t("vibration");
   el("notifLabel").textContent = t("notifications");
   el("notifNote").textContent = t("botBased");
+
+  // Rules / About
+  el("infoTitle").textContent = t("infoTitle");
+  el("rulesLabel").textContent = t("rulesLabel");
+  el("rulesHint").textContent = t("rulesHint");
+  el("openRulesBtn").textContent = t("rulesOpen");
+  el("rulesTitle").textContent = t("rulesTitle");
+
   el("settingsHint").textContent = t("weeklyPrize");
+  renderRules();
 }
 
 function setLocale(next) {
@@ -238,6 +328,13 @@ function setLocale(next) {
   applyLocaleTexts();
   // persist
   saveSettings({ language: locale }).catch(() => {});
+}
+
+
+function renderRules() {
+  const box = el("rulesContent");
+  if (!box) return;
+  box.innerHTML = RULES_CONTENT[locale] || RULES_CONTENT.en;
 }
 
 // ---- UI update ----
@@ -301,9 +398,16 @@ function renderTasks(tasks) {
     openBtn.textContent = t("open");
     openBtn.addEventListener("click", () => {
       taskOpenTimes[task.id] = Date.now();
-      if (tg?.openTelegramLink && task.url.startsWith("https://t.me/")) tg.openTelegramLink(task.url);
-      else if (tg?.openLink) tg.openLink(task.url);
-      else window.open(task.url, "_blank");
+
+      // Telegram Web compatibility: prefer openLink for all Telegram URLs
+      const url = task.url;
+      try {
+        if (tg?.openLink) tg.openLink(url);
+        else if (tg?.openTelegramLink) tg.openTelegramLink(url);
+        else window.open(url, "_blank");
+      } catch {
+        window.open(url, "_blank");
+      }
     });
 
     const checkBtn = document.createElement("button");
@@ -402,7 +506,7 @@ async function handleTap() {
     // Auto ad each 100 taps (client-side trigger)
     if (user?.total_taps && user.total_taps % 100 === 0) {
       // don't block tapping too long; fire and forget
-      showAd(AdAuto).catch(() => {});
+      showAd(AdAuto, { silent: true }).catch(() => {});
     }
   } catch (e) {
     webAlert(e.message || "Tap failed");
@@ -432,7 +536,7 @@ async function handleWatchAd() {
   if (!userId) return;
 
   // show ad first (rewarded)
-  const r = await showAd(AdReward);
+  const r = await showAd(AdReward, { silent: false, friendly: (locale === "tr" ? "Reklam şu an hazır değil. Lütfen daha sonra tekrar deneyin." : "Ad is not ready. Please try again later.") });
   if (!r.ok) return;
 
   // then credit
@@ -503,6 +607,11 @@ function bindUI() {
   });
 
   el("watchAdBtn").addEventListener("click", handleWatchAd);
+
+  // Rules modal
+  el("openRulesBtn").addEventListener("click", () => showModal("rulesModal"));
+  el("closeRules").addEventListener("click", () => hideModal("rulesModal"));
+
 }
 
 // ---- Boot ----
