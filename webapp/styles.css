@@ -149,6 +149,9 @@ a { color: inherit; text-decoration: none; }
 .modal-inner {
   width: 100%;
   max-width: 520px;
+  max-height: calc(100vh - 44px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   border-radius: 22px;
   background: rgba(10, 16, 34, 0.98);
   border: 1px solid rgba(255,255,255,0.10);
@@ -157,8 +160,16 @@ a { color: inherit; text-decoration: none; }
 }
 
 .modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   display: flex; align-items: center; justify-content: space-between;
   gap: 10px;
+  margin: -16px -16px 0 -16px;
+  padding: 16px;
+  background: rgba(10, 16, 34, 0.98);
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+  backdrop-filter: blur(10px);
 }
 
 .modal-title { font-size: 16px; font-weight: 900; }
@@ -226,8 +237,8 @@ a { color: inherit; text-decoration: none; }
 }
 
 .select option {
-  background: #0b1220;
-  color: #fff;
+  background: #ffffff;
+  color: #000000;
 }
 
 .toggle {

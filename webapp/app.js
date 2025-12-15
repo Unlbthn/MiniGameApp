@@ -110,74 +110,95 @@ const I18N = {
 
 // ---- Rules content ----
 const RULES_CONTENT = {
+
   en: `
-    <h3>TapToEarnTon – Program Overview</h3>
-    <p>TapToEarnTon is a Telegram Mini App that awards in-app <b>TON Credits</b> for gameplay activity and task completion.</p>
+    <h3>TapToEarnTon – Rules & Program Information</h3>
+    <p>TapToEarnTon is a Telegram Mini App where you tap, complete verified daily tasks, and earn <b>TON Credits</b>.</p>
 
-    <h4>1) TON Credits</h4>
+    <h4>1) TON Credits & Rewards</h4>
     <ul>
-      <li>TON Credits are an <b>in-app reward unit</b>.</li>
-      <li>We plan to enable conversion to on-chain TON in future versions, subject to compliance, availability, and program rules.</li>
-      <li>Until withdrawal is officially launched, TON Credits remain in-app and have no guaranteed cash value.</li>
+      <li><b>TON Credits</b> are the reward balance you earn inside the app.</li>
+      <li><b>Level-up bonus:</b> every level up adds <b>+0.1 TON Credits</b>.</li>
+      <li><b>Daily Ad Watch:</b> up to <b>10</b> rewarded ads per day, each adds <b>+0.1 TON Credits</b> after completion.</li>
+      <li><b>Weekly leaderboard:</b> #1 player receives <b>+0.5 TON Credits</b> at the weekly reset.</li>
     </ul>
 
-    <h4>2) How to earn</h4>
+    <h4>2) How Gameplay Works</h4>
     <ul>
-      <li><b>Taps:</b> each tap increases your coins and weekly score.</li>
-      <li><b>Level-up:</b> each level adds <b>+0.1 TON Credits</b>.</li>
-      <li><b>Daily Ad Watch:</b> up to <b>10</b> per day, each completed view adds <b>+0.1 TON Credits</b>.</li>
-      <li><b>Weekly Leaderboard:</b> #1 at weekly reset receives <b>+0.5 TON Credits</b>.</li>
+      <li><b>Taps</b> increase your coins and weekly score.</li>
+      <li><b>Tap Power</b> upgrades start at <b>500 coins</b> and increase by <b>+500</b> each time.</li>
+      <li>To support the reward pool, an <b>Adsgram</b> video may appear automatically every <b>100 taps</b>.</li>
     </ul>
 
-    <h4>3) Task verification</h4>
+    <h4>3) Wallet Linking (TonConnect)</h4>
     <ul>
-      <li>Some tasks require real verification via Telegram (e.g., channel membership).</li>
-      <li>If verification fails, rewards are not granted.</li>
+      <li>You can link your TON wallet from <b>Settings</b>.</li>
+      <li>When on-chain withdrawals are enabled, your accumulated TON Credits will be paid out to your linked wallet according to program rules.</li>
     </ul>
 
-    <h4>4) Fair play & anti-fraud</h4>
+    <h4>4) Daily Tasks & Verification</h4>
     <ul>
-      <li>Botting, multi-account farming, or manipulation attempts may result in reward cancellation and account restrictions.</li>
-      <li>We may apply manual review to protect the reward pool.</li>
+      <li>Tasks can be claimed only after pressing <b>Check</b>.</li>
+      <li>Join tasks are verified via Telegram membership checks.</li>
+      <li>Open-link tasks require you to actually open the link and return after a few seconds.</li>
+      <li>Daily tasks reset every day.</li>
     </ul>
 
-    <h4>5) Changes</h4>
-    <p>This product is currently in beta. We may update rules, rewards, and limits to maintain stability and fairness.</p>
+    <h4>5) Fair Play Policy</h4>
+    <ul>
+      <li>Botting, multi-account farming, automation, or manipulation is prohibited.</li>
+      <li>Suspicious activity may lead to reward cancellation or account restriction.</li>
+      <li>We may run anti-fraud reviews to keep the reward pool fair for everyone.</li>
+    </ul>
+
+    <h4>6) Updates & Changes</h4>
+    <p>We may update limits, rewards, tasks, and rules to keep the experience stable and sustainable.</p>
   `,
+
   tr: `
-    <h3>TapToEarnTon – Program Bilgilendirmesi</h3>
-    <p>TapToEarnTon, oyun içi etkileşim ve görev tamamlamalarıyla <b>TON Credits</b> kazandıran bir Telegram Mini App uygulamasıdır.</p>
+    <h3>TapToEarnTon – Kurallar & Oyun Hakkında</h3>
+    <p>TapToEarnTon, Telegram Mini App içinde <b>tap</b> yaparak ve doğrulanmış günlük görevleri tamamlayarak <b>TON Credits</b> kazandığınız bir ödül programıdır.</p>
 
-    <h4>1) TON Credits</h4>
+    <h4>1) TON Credits & Ödüller</h4>
     <ul>
-      <li>TON Credits, <b>uygulama içi ödül birimi</b>dir.</li>
-      <li>İlerleyen sürümlerde resmî çekim (withdrawal) özelliği açıldığında, TON Credits’in zincir üstü TON’a dönüştürülmesi planlanmaktadır (uyumluluk, erişilebilirlik ve program kurallarına tabidir).</li>
-      <li>Çekim özelliği resmen aktif edilene kadar TON Credits uygulama içinde kalır; <b>garanti edilmiş nakit değeri yoktur</b>.</li>
+      <li><b>TON Credits</b>, uygulama içi ödül bakiyenizdir.</li>
+      <li><b>Seviye atlama bonusu:</b> her seviye atladığınızda <b>+0.1 TON Credits</b> eklenir.</li>
+      <li><b>Reklam izle:</b> günde <b>10</b> hak, her tamamlanan izleme sonrası <b>+0.1 TON Credits</b> eklenir.</li>
+      <li><b>Haftalık liderlik:</b> haftanın <b>1.</b> oyuncusuna haftalık reset’te <b>+0.5 TON Credits</b> verilir.</li>
     </ul>
 
-    <h4>2) Nasıl kazanılır?</h4>
+    <h4>2) Oyun Mekaniği</h4>
     <ul>
-      <li><b>Tap:</b> her tap coin ve haftalık skorunuzu artırır.</li>
-      <li><b>Seviye Atlama:</b> her seviye artışında <b>+0.1 TON Credits</b> eklenir.</li>
-      <li><b>Günlük Reklam İzle:</b> günde en fazla <b>10</b> kez; her tamamlanan izleme <b>+0.1 TON Credits</b> sağlar.</li>
-      <li><b>Haftalık Liderlik:</b> hafta sıfırlanırken 1. olan kullanıcı <b>+0.5 TON Credits</b> kazanır.</li>
+      <li><b>Tap</b> yaptıkça coin ve haftalık skor artar.</li>
+      <li><b>Tap Gücü</b> yükseltme maliyeti <b>500 coin</b> ile başlar ve her yükseltmede <b>+500</b> artar.</li>
+      <li>Ödül havuzunu sürdürülebilir kılmak için her <b>100 tap</b> sonrasında otomatik <b>Adsgram</b> videosu gösterilebilir.</li>
     </ul>
 
-    <h4>3) Görev doğrulama</h4>
+    <h4>3) Cüzdan Eşleştirme (TonConnect)</h4>
     <ul>
-      <li>Bazı görevler Telegram üzerinden gerçek doğrulama gerektirir (örn. kanal üyeliği).</li>
-      <li>Doğrulama başarısızsa ödül verilmez.</li>
+      <li>TON cüzdanınızı <b>Ayarlar</b> bölümünden bağlayabilirsiniz.</li>
+      <li>On-chain çekimler aktif olduğunda, biriken TON Credits bakiyeniz program kurallarına göre bağlı cüzdanınıza <b>TON</b> olarak aktarılır.</li>
     </ul>
 
-    <h4>4) Adil oyun & kötüye kullanım önleme</h4>
+    <h4>4) Günlük Görevler & Doğrulama</h4>
     <ul>
-      <li>Bot kullanımı, çoklu hesapla farm, hile veya manipülasyon tespitinde ödüller iptal edilebilir ve hesap kısıtlanabilir.</li>
-      <li>Ödül havuzunun güvenliği için manuel inceleme uygulanabilir.</li>
+      <li>Görev ödülü almak için ilgili görevi tamamladıktan sonra <b>Check</b> butonuna basmanız gerekir.</li>
+      <li>Kanal/Grup katılım görevleri Telegram üyelik kontrolü ile doğrulanır.</li>
+      <li>Link açma görevlerinde linki gerçekten açıp birkaç saniye sonra geri dönerek <b>Check</b> yapmalısınız.</li>
+      <li>Günlük görevler her gün sıfırlanır.</li>
     </ul>
 
-    <h4>5) Değişiklik hakkı</h4>
-    <p>Ürün beta aşamasındadır. Kararlılık ve adalet için kurallar, limitler ve ödüller güncellenebilir.</p>
+    <h4>5) Adil Oyun Politikası</h4>
+    <ul>
+      <li>Bot/otomasyon, çoklu hesapla farm, hile veya manipülasyon yasaktır.</li>
+      <li>Şüpheli aktivitelerde ödüller iptal edilebilir veya hesap kısıtlanabilir.</li>
+      <li>Adil dağıtım için anti-fraud kontrolleri uygulanabilir.</li>
+    </ul>
+
+    <h4>6) Güncellemeler</h4>
+    <p>Kararlılık ve sürdürülebilirlik için limitler, ödüller, görevler ve kurallar zaman içinde güncellenebilir.</p>
   `
+
 };
 
 
@@ -191,17 +212,36 @@ let isTapping = false;
 
 // ---- Adsgram ----
 // Replace with your real block ids later
-const ADS_BLOCK_AUTO = "ADS_KEY_TEST_AUTO";
-const ADS_BLOCK_REWARD = "ADS_KEY_TEST_REWARD";
+
+function isValidAdsBlockId(v) {
+  return typeof v === "string" && (/^\d+$/.test(v) || /^int-\d+$/.test(v));
+}
+function getAdsBlockId(storageKey, fallback) {
+  const v = localStorage.getItem(storageKey);
+  if (isValidAdsBlockId(v)) return v;
+  if (v) localStorage.removeItem(storageKey);
+  return fallback;
+}
+
+const ADS_BLOCK_AUTO = getAdsBlockId("ads_block_auto", "int-17933");
+const ADS_BLOCK_REWARD = getAdsBlockId("ads_block_reward", "int-17933");
 
 let AdAuto = null;
 let AdReward = null;
 function initAds() {
   try {
-    if (window.Adsgram && typeof window.Adsgram.init === "function") {
-      AdAuto = window.Adsgram.init({ blockId: ADS_BLOCK_AUTO });
-      AdReward = window.Adsgram.init({ blockId: ADS_BLOCK_REWARD });
+    if (!(window.Adsgram && typeof window.Adsgram.init === "function")) return;
+
+    // If blockId is not valid, skip init to avoid AdsgramError popups
+    if (!isValidAdsBlockId(ADS_BLOCK_AUTO) || !isValidAdsBlockId(ADS_BLOCK_REWARD)) {
+      console.warn("Adsgram blockId invalid. Set valid numeric or int-<num> blockId in localStorage.");
+      AdAuto = null;
+      AdReward = null;
+      return;
     }
+
+    AdAuto = window.Adsgram.init({ blockId: ADS_BLOCK_AUTO });
+    AdReward = window.Adsgram.init({ blockId: ADS_BLOCK_REWARD });
   } catch (e) {
     console.warn("Adsgram init error:", e);
   }
@@ -399,11 +439,15 @@ function renderTasks(tasks) {
     openBtn.addEventListener("click", () => {
       taskOpenTimes[task.id] = Date.now();
 
-      // Telegram Web compatibility: prefer openLink for all Telegram URLs
       const url = task.url;
+
+      // Prefer openTelegramLink for t.me / tg:// links (opens inside Telegram),
+      // and openLink for web.telegram.org or external links.
+      const isTgDeepLink = /^tg:\/\//i.test(url) || /^https?:\/\/t\.me\//i.test(url);
+
       try {
-        if (tg?.openLink) tg.openLink(url);
-        else if (tg?.openTelegramLink) tg.openTelegramLink(url);
+        if (isTgDeepLink && tg?.openTelegramLink) tg.openTelegramLink(url);
+        else if (tg?.openLink) tg.openLink(url);
         else window.open(url, "_blank");
       } catch {
         window.open(url, "_blank");
@@ -611,6 +655,11 @@ function bindUI() {
   // Rules modal
   el("openRulesBtn").addEventListener("click", () => showModal("rulesModal"));
   el("closeRules").addEventListener("click", () => hideModal("rulesModal"));
+  // Close rules modal by tapping outside the card (mobile friendly)
+  el("rulesModal").addEventListener("click", (e) => {
+    if (e.target && e.target.id === "rulesModal") hideModal("rulesModal");
+  });
+
 
 }
 
