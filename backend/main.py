@@ -286,6 +286,25 @@ class SettingsRequest(BaseModel):
 
 
 # -------------------- API --------------------
+# ---- Public config (frontend bootstrap) ----
+class ConfigResponse(BaseModel):
+    version: str = "2.2.3"
+    adsgram_interstitial_block_id: str = ""
+    adsgram_reward_block_id: str = ""
+
+
+@app.get("/api/config", response_model=ConfigResponse)
+def get_config():
+    # These are provided via Railway environment variables.
+    # Interstitial (auto every 100 taps): typically "int-12345"
+    # Rewarded (daily watch): typically "12345"
+    return ConfigResponse(
+        adsgram_interstitial_block_id=os.getenv("ADSGRAM_INTERSTITIAL_BLOCK_ID")
+        or os.getenv("ADSGRAM_AUTO_BLOCK_ID")
+        or "",
+        adsgram_reward_block_id=os.getenv("ADSGRAM_REWARD_BLOCK_ID") or "",
+    )
+
 @app.post("/api/me")
 def me(payload: MeRequest, db: Session = Depends(get_db)):
     ensure_resets(db)
