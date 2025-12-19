@@ -446,7 +446,7 @@ function updateUI() {
   if (!user) return;
 
   el("coins").textContent = user.coins.toString();
-  el("tonCredits").textContent = (user.ton_credits ?? 0).toFixed(4);
+  el("tonCredits").textContent = (user.ton_credits ?? 0).toFixed(1);
   el("level").textContent = user.level.toString();
   el("tapPower").textContent = user.tap_power.toString();
   el("weeklyScore").textContent = user.weekly_score.toString();
