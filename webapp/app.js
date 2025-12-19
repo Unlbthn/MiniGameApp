@@ -223,8 +223,40 @@ function getAdsBlockId(storageKey, fallback) {
   return fallback;
 }
 
-const ADS_BLOCK_AUTO = getAdsBlockId("ads_block_auto", "int-17933");
-const ADS_BLOCK_REWARD = getAdsBlockId("ads_block_reward", "int-17933");
+let ADS_BLOCK_AUTO = "";
+let ADS_BLOCK_REWARD = "";
+
+function pickAdsBlockId(storageKey, serverValue) {
+  const sv = (serverValue || "").toString().trim();
+  if (isValidAdsBlockId(sv)) return sv;
+
+  const v = localStorage.getItem(storageKey);
+  if (isValidAdsBlockId(v)) return v;
+  if (v) localStorage.removeItem(storageKey);
+  return "";
+}
+
+let SERVER_CONFIG = null;
+async function loadServerConfig() {
+  try {
+    SERVER_CONFIG = await apiFetch("/api/config");
+  } catch (e) {
+    console.warn("Failed to load /api/config:", e);
+    SERVER_CONFIG = null;
+  }
+
+  const autoFromServer =
+    SERVER_CONFIG && SERVER_CONFIG.adsgram_interstitial_block_id
+      ? String(SERVER_CONFIG.adsgram_interstitial_block_id).trim()
+      : "";
+  const rewardFromServer =
+    SERVER_CONFIG && SERVER_CONFIG.adsgram_reward_block_id
+      ? String(SERVER_CONFIG.adsgram_reward_block_id).trim()
+      : "";
+
+  ADS_BLOCK_AUTO = pickAdsBlockId("ads_block_auto", autoFromServer);
+  ADS_BLOCK_REWARD = pickAdsBlockId("ads_block_reward", rewardFromServer);
+}
 
 let AdAuto = null;
 let AdReward = null;
@@ -247,20 +279,47 @@ function initAds() {
   }
 }
 
+
 async function showAd(controller, opts = {}) {
   const silent = !!opts.silent;
   const friendly = opts.friendly || null;
 
+  const notConfigured =
+    !isValidAdsBlockId(ADS_BLOCK_AUTO) || !isValidAdsBlockId(ADS_BLOCK_REWARD);
+
   if (!controller || typeof controller.show !== "function") {
-    if (!silent) webAlert(friendly || (locale === "tr" ? "Reklam şu an hazır değil. Daha sonra tekrar dene." : "Ad is not ready. Please try again later."));
-    return { ok: false };
+    if (!silent) {
+      if (notConfigured) {
+        webAlert(
+          locale === "tr"
+            ? "Reklam ayarı tamamlanmadı. Lütfen Adsgram blockId değerlerini Railway Variables kısmına ekleyin."
+            : "Ads are not configured. Please set Adsgram blockId values in server variables."
+        );
+      } else {
+        webAlert(
+          friendly ||
+            (locale === "tr"
+              ? "Reklam şu an hazır değil. Lütfen daha sonra tekrar deneyin."
+              : "Ad is not ready. Please try again later.")
+        );
+      }
+    }
+    return { ok: false, notConfigured };
   }
+
   try {
     await controller.show();
     return { ok: true };
   } catch (e) {
     console.warn("Adsgram show error:", e);
-    if (!silent) webAlert(friendly || (locale === "tr" ? "Reklam şu anda gösterilemiyor. Lütfen sonra tekrar dene." : "Ad cannot be shown right now. Please try again later."));
+    if (!silent) {
+      webAlert(
+        friendly ||
+          (locale === "tr"
+            ? "Reklam şu an gösterilemiyor. Lütfen daha sonra tekrar deneyin."
+            : "Ad cannot be shown right now. Please try again later.")
+      );
+    }
     return { ok: false, error: e };
   }
 }
@@ -663,8 +722,11 @@ function bindUI() {
 
 }
 
+window.addEventListener("load", () => { try { initAds(); } catch(e) {} });
+
 // ---- Boot ----
 (async function boot() {
+  await loadServerConfig();
   initAds();
   initTonConnect();
   bindUI();
